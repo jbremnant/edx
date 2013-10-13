@@ -100,7 +100,7 @@ Noisy target function makes error with probability, (1-lambba)
     of mu only when the target function never generates a correct answer.
     [a]
 
-    WRONG
+    WRONG!
 """
 
 
@@ -214,6 +214,8 @@ def runlmpla(n=10):
 def experiment4(iter=1000):
     itersum = 0.0
     for i in range(iter): 
+        if(i%100==0):
+            print("run %d" % i)
         res = runlmpla(10)
         itersum += res['iter']
     return(itersum/iter) 
@@ -230,6 +232,7 @@ Target function is now this:
 Instead of linear function of sign(x'*w)
 
 8. Do lm without any transformation and compute avg E_in on 1000 runs
+    [b]
 
 9. Now transform the training data into:
     (1, x1, x2, x1*x2, x1^2, x2^2)
@@ -239,7 +242,7 @@ Instead of linear function of sign(x'*w)
 """ 
 
 def nl_target(x):
-    xsum = np.sum(x[1:3]^2 - 0.6)
+    xsum = np.sum(x[1:3]**2 - 0.6)
     return(1 if xsum>=0 else -1)
 
 def genxynl(n,d=2):
@@ -255,9 +258,11 @@ def runlmnl(n=1000,d=2):
     (X,y) = genxynl(n,d)
     w = lm2(X,y)  # should be faster, with same result
     E_in = geterr(X,y,w)
-    res = dict(E_in=E_in, w=w, wtarget=wtarget)
+    res = dict(E_in=E_in, w=w)
     return(res)
 
+# always gets right under 20% : 0.19201299999999974
+# [a] 0.10
 def experiment5(iter=1000):
     errsum = 0.0
     for i in range(iter):
@@ -266,7 +271,7 @@ def experiment5(iter=1000):
     return(errsum/iter)
 
 def transformX(x): 
-    return(np.array([x[0], x[1], x[2], x[1]*x[2], x[1]^2, x[2]^2]))
+    return(np.array([x[0], x[1], x[2], x[1]*x[2], x[1]**2, x[2]**2]))
 
 def runlmnl_trans(n=1000):
     (X,y) = genxynl(n)
@@ -274,6 +279,9 @@ def runlmnl_trans(n=1000):
     betas = lm2(Xtran, y)    
     return(betas)
 
+# [a] g(x1, x2) = sign(−1 − 0.05x1 + 0.08x2 + 0.13x1x2 + 1.5x21 + 1.5x2)
+# array([-1.12846996,  0.05227343, -0.08267919, -0.17047739,  0.66911726, 0.82513942])
+#        -1         , -0.05      , -0.08      ,  0.13      ,  1.5       , 1.5
 def experiment6(n=1000):
     return(runlmnl_trans(n))
 
@@ -289,4 +297,3 @@ def experiment7(iter=1000, n=1000):
         E_out = geterr(Xouttran,yout,betas)
         Eoutsum += E_out
     return(Eoutsum/iter) 
-
