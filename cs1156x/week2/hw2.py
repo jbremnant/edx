@@ -4,12 +4,33 @@
 Hoeffding Inequality
 Questions 1,2
 
+The run the program in python interpreter
+
     sys.path.import('path/to/this/hw2.py')
     import hw2 as h
     h.experiment1(100000)
+
+1000 virtual coins, with 10 tosses for each one. 
+Calculate the fraction of heads from:
+    coin[1], coin[rand], coin[which min[heads]]
+
+Run the experiment 100k times to determine the average ratio of heads. 
+
+     v_1                 v_rand              v_min
+    (0.4998239999999971, 0.5006619999999977, 0.03805699999997634) 
+
+1. v_min is closest to:
+    [b] 0.01 
+
+2. Which coin or coins satisfy Hoeffiding's Inequality?
+    Both v_1 and v_rand gives "nu" that's very close to "mu".
+    [d] c_1 and c_rand  
+    
+
 """
 
 import numpy as np
+from numpy import linalg 
 import random as rn
 
 def flip():
@@ -33,6 +54,7 @@ def choose_coins(ncoin):
     return(vs[0], vs[rn.randint(0,ncoin-1)], reduce(min,vs))
 
 # hw2, Hoeffding Inequality questions 1,2
+# (0.4998239999999971, 0.5006619999999977, 0.03805699999997634) 
 def experiment1(iter):
     v1sum = 0.0
     vrandsum = 0.0
@@ -120,6 +142,10 @@ def lm(X,y):
     # beta = np.dot(miX, y)
     beta = np.dot(np.dot(mi, Xt), y)
     return(beta)
+
+def lm2(X,y):
+    # cheating. linalg package already implements least sq regression
+    return(linalg.lstsq(X,y)[0])
 
 def runlm():
     w = genline()
