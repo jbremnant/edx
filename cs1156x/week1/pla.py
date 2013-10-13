@@ -39,8 +39,11 @@ def pla(X,y,w=np.array([0 for i in range(2)]),b=0):
     separated = False 
     iter = 0
     n = X.shape[0]
+    i = 0
     while not separated:
         separated = True
+        if(i > 1000):
+            break
         for i in range(n):
             x = X[i,:]
             y1 = y[i]
@@ -50,12 +53,13 @@ def pla(X,y,w=np.array([0 for i in range(2)]),b=0):
                 b = b + y1*np.sqrt(np.dot(x,x))
                 iter = iter + 1
                 separated = False
+        i += 1
     return(dict(w=w, b=b, iter=iter))
         
-def runpla(n):
-    (w,b) = genline() 
-    (X,y) = genxy(n, w, b) 
-    res = pla(X, y, w=np.array([0,0]), b=0)         
+def runpla(n, w=np.array([0,0]), b=0):
+    (fw,fb) = genline() 
+    (X,y) = genxy(n, fw, fb) 
+    res = pla(X, y, w=w, b=b)
     # target function values
     res['fw'] = w
     res['fb'] = b

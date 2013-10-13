@@ -6,7 +6,8 @@ Questions 1,2
 
 The run the program in python interpreter
 
-    sys.path.import('path/to/this/hw2.py')
+    sys.path.append('path/to/this/week1')
+    sys.path.append('path/to/this/week2')
     import hw2 as h
     h.experiment1(100000)
 
@@ -69,7 +70,7 @@ def experiment1(iter):
 
 """
 Error and Noise
-Question 3,4
+Questions 3,4
 
 Hypothesis h makes error with probability, mu
 Noisy target function makes error with probability, (1-lambba)
@@ -98,6 +99,8 @@ Noisy target function makes error with probability, (1-lambba)
     with mu. That can only happen when lambda is zero. Thus, h will be independent
     of mu only when the target function never generates a correct answer.
     [a]
+
+    WRONG
 """
 
 
@@ -105,8 +108,14 @@ Noisy target function makes error with probability, (1-lambba)
 Linear Regression
 Questions 5,6,7
 
+5. N = 100, use linear regression to find g and eval E_in: the fraction of
+   in-sample points that got classified incorrectly. Repeat 1000 times and
+   compute the avg of E_in.
 
+6. N = 100, repeat but now compute E_out on 1000 out-of-sample data points
 
+7. N = 10, first use lm and then use the weights as initial input into PLA.
+   Check avg iterations required to converge on 1000 repeats.
 """
 
 def calc_class(x,w):
@@ -137,17 +146,147 @@ def genxy(n,w):
 def lm(X,y):
     Xt = np.transpose(X) 
     m = np.matrix(np.dot(Xt, X))
+    # getting the inverse : not sure what kind of inversion method it uses?
     mi = m.getI()
     # miX = np.dot(mi, Xt)
     # beta = np.dot(miX, y)
     beta = np.dot(np.dot(mi, Xt), y)
-    return(beta)
+    return(beta.getA()[0,:])
 
 def lm2(X,y):
     # cheating. linalg package already implements least sq regression
     return(linalg.lstsq(X,y)[0])
 
-def runlm():
-    w = genline()
-    (X,y) = genxy(n, w)
+def geterr(X,y,w):
+    n = X.shape[0]
+    yhat = np.apply_along_axis(calc_class, 1, X, w)
+    # true/false numerical conversion gives 1/0
+    errcount = 1.0*np.sum( y*yhat < 0 )  
+    return(errcount/n)
+
+def runlm(n=100):
+    wtarget = genline()
+    (X,y) = genxy(n, wtarget)
+    w = lm(X,y) 
+    errratio = geterr(X,y,w)
+    return(dict(E_in=errratio, w=w, wtarget=wtarget))
+
+# Test: in-sample error, E_in, estimation.
+# with 1000 iterations, average err E_in = 0.026879999999999977, 0.251, 0.0264
+def experiment2(iter=1000):
+    errsum = 0.0
+    for i in range(iter):
+        res = runlm(100) 
+        errsum = errsum + res['E_in']
+    return(errsum / iter)
+
+# Test: out-of-sample error, E_out, estimation.
+# with 1000 iterations, average err E_out = 0.03248500000000002, 0.0297, 0.0321
+# E_out > E_in generally, but close
+def experiment3(iter=1000):
+    errsum = 0.0
+    for i in range(iter):
+        res = runlm(100)
+        w       = res['w']
+        wtarget = res['wtarget']
+        # generate out-of-sample data
+        (Xout,yout) = genxy(1000, wtarget)
+        E_out = geterr(Xout,yout,w)
+        errsum = errsum + E_out
+    return(errsum / iter)
+
+def runlmpla(n=10):
+    import pla as p
+    fw = genline()
+    (X,y) = genxy(n, fw)
+    wini = lm(X,y) 
+    errratio = geterr(X,y,wini)
+    # use the initial weights from regression
+    res = p.pla(X[:,(1,2)], y, w=wini[1:3], b=wini[0])
+    # target function values
+    res['lmw'] = wini
+    res['fw'] = fw[1:3]
+    res['fb'] = fw[0]
+    return(res)
+
+# Test: use w from lm to run pla
+# with 1000 iterations, average iter = 
+def experiment4(iter=1000):
+    itersum = 0.0
+    for i in range(iter): 
+        res = runlmpla(10)
+        itersum += res['iter']
+    return(itersum/iter) 
+
+
+"""
+Nonlinear Transformation
+Questions 8,9,10
+
+Target function is now this:
+
+    f(x1,x2) = sign(x1^2 + x2^2 - 0.6)
+
+Instead of linear function of sign(x'*w)
+
+8. Do lm without any transformation and compute avg E_in on 1000 runs
+
+9. Now transform the training data into:
+    (1, x1, x2, x1*x2, x1^2, x2^2)
+   Show the computed betas
+
+10. calculate out-of-sample error, E_out, using the hypothesis above
+""" 
+
+def nl_target(x):
+    xsum = np.sum(x[1:3]^2 - 0.6)
+    return(1 if xsum>=0 else -1)
+
+def genxynl(n,d=2):
+    X = np.array([getsample(d) for i in range(n)])
+    # last arg is the 2nd arg that goes into calc_class
+    y = np.apply_along_axis(nl_target, 1, X)
+    # now add the noise on 10% of dataset
+    pos = rn.sample(range(n), n/10)
+    y[pos] = -1*y[pos]
+    return(X,y)
+
+def runlmnl(n=1000,d=2):
+    (X,y) = genxynl(n,d)
+    w = lm2(X,y)  # should be faster, with same result
+    E_in = geterr(X,y,w)
+    res = dict(E_in=E_in, w=w, wtarget=wtarget)
+    return(res)
+
+def experiment5(iter=1000):
+    errsum = 0.0
+    for i in range(iter):
+        res = runlmnl(1000,2)
+        errsum += res['E_in']
+    return(errsum/iter)
+
+def transformX(x): 
+    return(np.array([x[0], x[1], x[2], x[1]*x[2], x[1]^2, x[2]^2]))
+
+def runlmnl_trans(n=1000):
+    (X,y) = genxynl(n)
+    Xtran = np.apply_along_axis(transformX, 1, X)
+    betas = lm2(Xtran, y)    
+    return(betas)
+
+def experiment6(n=1000):
+    return(runlmnl_trans(n))
+
+def experiment7(iter=1000, n=1000):
+    Eoutsum = 0.0
+    for i in range(iter):
+        (X,y) = genxynl(n)
+        Xtran = np.apply_along_axis(transformX, 1, X)
+        betas = lm2(Xtran, y)    
+    
+        (Xout,yout) = genxynl(n)
+        Xouttran = np.apply_along_axis(transformX, 1, Xout)
+        E_out = geterr(Xouttran,yout,betas)
+        Eoutsum += E_out
+    return(Eoutsum/iter) 
 
