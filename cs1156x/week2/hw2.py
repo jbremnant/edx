@@ -210,7 +210,8 @@ def runlmpla(n=10):
     return(res)
 
 # Test: use w from lm to run pla
-# with 1000 iterations, average iter = 
+# with 1000 iterations, average iter = 2.611, 3.767, etc..
+# [a] 1
 def experiment4(iter=1000):
     itersum = 0.0
     for i in range(iter): 
@@ -279,9 +280,9 @@ def runlmnl_trans(n=1000):
     betas = lm2(Xtran, y)    
     return(betas)
 
-# [a] g(x1, x2) = sign(−1 − 0.05x1 + 0.08x2 + 0.13x1x2 + 1.5x21 + 1.5x2)
-# array([-1.12846996,  0.05227343, -0.08267919, -0.17047739,  0.66911726, 0.82513942])
-#        -1         , -0.05      , -0.08      ,  0.13      ,  1.5       , 1.5
+#    [a] 
+#    array([-1.12846996,  0.05227343, -0.08267919, -0.17047739,  0.66911726, 0.82513942])
+#           -1         , -0.05      , -0.08      ,  0.13      ,  1.5       , 1.5
 def experiment6(n=1000):
     return(runlmnl_trans(n))
 
