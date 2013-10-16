@@ -243,7 +243,7 @@ Instead of linear function of sign(x'*w)
 """ 
 
 def nl_target(x):
-    xsum = np.sum(x[1:3]**2 - 0.6)
+    xsum = np.sum(x[1:3]**2) - 0.6
     return(1 if xsum>=0 else -1)
 
 def genxynl(n,d=2):

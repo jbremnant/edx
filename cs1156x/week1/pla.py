@@ -39,10 +39,12 @@ def pla(X,y,w=np.array([0 for i in range(2)]),b=0):
     separated = False 
     iter = 0
     n = X.shape[0]
-    i = 0
+    j = 0
     while not separated:
         separated = True
-        if(i > 1000):
+        if(j > 1000):
+            print("pla taking too long, aborting")
+            iter = 0
             break
         for i in range(n):
             x = X[i,:]
@@ -53,7 +55,7 @@ def pla(X,y,w=np.array([0 for i in range(2)]),b=0):
                 b = b + y1*np.sqrt(np.dot(x,x))
                 iter = iter + 1
                 separated = False
-        i += 1
+        j += 1
     return(dict(w=w, b=b, iter=iter))
         
 def runpla(n, w=np.array([0,0]), b=0):
