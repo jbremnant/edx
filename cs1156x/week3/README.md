@@ -63,6 +63,47 @@ Learn the puzzle the at the end of lecture 5.
 
 Theory of Generalization
 ========================
+How do you generalize the growth function bound for all H?
+We postulated that this bound is polynomial instead of exponential.
+The proof uses recursion and inductive steps.
+
+Recursion Step
+--------------
+
+> B(N,k) : let this be _the maximum number of dichotomies_ on N points such
+>          that no subset of size k of the N points can be _shattered_ by
+>          these dichotomies.
+
+* assumes break point k, then tries to find the most dichotomies on N points
+  without imposing any further restrictions.
+
+* since `B(N,k)` is defined as a maximum, it will serve as an upper bound for any
+  `m_H(N)` that has a break point k:
+
+  `m_H(N) <= B(N,k)`
+
+* refer to pages 46-48 for details on derivation. You end up with
+
+  ```
+  B(N,k) = alpha + 2*beta
+  alpha + beta <= B(N-1,k)
+  beta <= B(N-1, k-1)
+  B(N,k) <= B(N-1,k) + B(N-1,k-1)
+  ``` 
+
+* Sauer's Lemma
+
+  ```
+  B(N,k) <= sum_{i=0}^{k-1}( N choose i)
+  ``` 
+
+
+Inductive Step
+--------------
+Look at the lecture notes on the proof of inductive step.
+
+
+* The m_h(N) helps to reduce the redundancy in the error of Hypothesis set.
 
 
 
