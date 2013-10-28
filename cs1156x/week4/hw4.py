@@ -157,12 +157,17 @@ bias(x) = Ex[ (gbar(x) - f(x))^2 ]
    coefficients are given to second decimal accuracy
   
    You can't return simple slope = (y1-y0)/(x1-x0) of the points
-   because the line has to pass through the origin 
+   because the line has to pass through the origin .
 
     >>> h.q4(100000)
     1.4316070065314364
 
-    [d] gbar(x) = 1.58x
+    [d] gbar(x) = 1.58x  WRONG!
+
+    is it then
+    [e] none of the above
+
+    forum suggests 1.43 is not wrong
 
 5. What is the closest value to the bias in this case?
     >>> h.q5(5000,genfunc=h.genxy_nointercept)
