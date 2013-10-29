@@ -170,10 +170,10 @@ bias(x) = Ex[ (gbar(x) - f(x))^2 ]
     forum suggests 1.43 is not wrong
 
 5. What is the closest value to the bias in this case?
-    >>> h.q5(5000,genfunc=h.genxy_nointercept)
-    1.1879907504729825
+    >>> h.q5(10000,genfunc=h.genxy_nointercept)
+    {'bias_in': 0.26983915226025612, 'bias_out': 1.1942679404298699}
     
-    [e] 1.0
+    [b] 0.3  *note this is the same as in-sample bias
 
 6. What is the closest value to the variance in this case?
     >>> h.q6(5000,genfunc=h.genxy_nointercept)
@@ -239,16 +239,16 @@ def q4(iter=100, genfunc=genxy_nointercept, hypofunc=h2.lm2):
   # gbar    = np.mean(gD)
   gbar    = betamu*xs
   var     = np.var(gD)
-  bias    = np.mean((gbar - f)**2)  
-  return({'betamu':betamu, 'betas':betas, 'f':f, 'xs':xs, 'gD':gD, 'gbar':gbar})
+  bias    = np.mean((gbar - f)**2) 
+  return({'betamu':betamu,'betas':betas,'f':f,'xs':xs,'gD':gD,'gbar':gbar,'bias':bias,'var':var})
 
 
 def q5(iter=100, genfunc=genxy_nointercept, hypofunc=h2.lm2):
   d = q4(iter,genfunc,hypofunc)
   (x,y) = genfunc(iter)
   betamu = d['betamu']
-  bias = np.mean( (y - betamu*x)**2 )
-  return(bias)
+  bias_out = np.mean( (y - betamu*x)**2 )
+  return({'bias_out':bias_out,'bias_in':d['bias']})
 
 def q6(iter=100, genfunc=genxy_nointercept, hypofunc=h2.lm2):
   d = q4(iter,genfunc,hypofunc)
@@ -297,3 +297,46 @@ def q7(iter=100):
 
   Eavg = np.mean(E,axis=0)
   return({'E':E,'Eavg':Eavg})
+
+
+"""
+VC Dimension
+
+  First, theorem 2.4 (book pg.50) says:
+
+    mH(N) <= sum_{i=0}^{dvc}(N i)
+  
+  The VC dimension is the order of the polynomial bound on mH(N).
+
+    mH(N) <= N^dvc + 1
+      
+
+8. Need to work out the solution
+   mH(N+1) = 2mH(N) - (N q)
+   mH(1)   = 2
+   mH(2)   = 2(2) - (2 q)                  = 4  -  (2 q)
+   mH(3)   = 2(4 - (2 q)) - (3 q)          = 8  - 2(2 q) -  (3 q)
+   mH(4)   = 2(8 - 2(2 q) - (3 q)) - (4 q) = 16 - 4(2 q) - 2(3 q) - (4 q)
+   ...
+   mH(N)   = 2^N - (N)(N-2 q) - (N/2)(N-1 q) - (N/2^2)(N q) - ...
+
+           has the form
+
+   mH(N)   = 2^N - N sum( (N q) )
+
+  The question is asking to find VC Dimension of H set whose growth function
+  satisfies the question derived from the iterations.
+
+  So when mH(N) <= 2^N, then the dichotomies can be shattered,
+  meaning there's a certain break point k.
+
+  We know when q > N,  then (N q) = 0    mH(N) -> 2^N
+          when q = N,  then (N q) = 1    mH(N) -> 2^N - N^2
+          when q < N,  then (N q) = N^q  mH(N) -> 2^N - N^q = 0
+
+  Thus, the dvc = q
+
+
+9. [b]  0 <= dvc(intersection H) <= min{ dvc(H) }
+
+"""
