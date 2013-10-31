@@ -20,7 +20,7 @@ Growth Function
 ---------------
 It's the maximum number of dichotomies you can have.
 
-    `m_H(N) = max  [H(x1,x2,...,xN)]
+    `m_H(N) = max  [H(x1,x2,...,xN)]`
 
 
 Break Point
@@ -58,7 +58,6 @@ Learn the puzzle the at the end of lecture 5.
 >    o    o    x
 >    o    x    o
 >    x    o    o
->   
 
 
 Theory of Generalization
@@ -104,6 +103,4 @@ Look at the lecture notes on the proof of inductive step.
 
 
 * The m_h(N) helps to reduce the redundancy in the error of Hypothesis set.
-
-
 
