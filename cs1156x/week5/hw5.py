@@ -214,13 +214,39 @@ Formulas:
   pointwise error:  e(h(x_n), y_n) = ln(1 + exp(-y_n * w' x_n))
   g_t = -(1/N) sum_{n=1}^{N} [ (y_n x_n) / ( 1 + exp(y_n w'(t) x_n) ) ]
 
-For stochastic gradient descent, you just need to consider one sample at a time.
+For stochastic gradient descent, you update your w for each data point.
+An epoch is when you run through the entire N samples in random order.
+
+NOTE!!
+The target function still generates -1,1! The logistic regression give you a
+probability from [0,1], where 0 represents -1, and 1 represents probablity that you have 1.
+Also, it doesn't make sense from the Cross-Entropy error equation that y should be 0 or 1.
+Consider the equation and see what happens when y = 0:
+
+  e = math.log(1.0 + math.exp(-y1 * np.dot(w,x1)))
+    = math.log(1 + math.exp(0) ) =  math.log( 2 )
+
+That will always evaluate to be log(2), no matter whether your prediction got it right or wrong!!
+
+8. Which of the following is closest to Eout for N = 100?
+  
+  >>> h.q8()
+  {'epochs': 340.23, 'Eout': 0.096603772972910076}
+
+  [d] 0.100
+
+
+9. How many epochs does it take on avg for Logistic Regression to converge for N=100?
+
+  [a] 350
+
+10. The PLA can be implemented using SGD using which of the following err functions e_n(w)?
 """
 
 def calc_class(x,w):
   y = np.dot(x,w)
-  # return(1 if y>=0 else -1)
-  return(1 if y>=0 else 0)
+  return(1 if y>=0 else -1)
+  # return(1 if y>=0 else 0)
 
 def getsample(d=2):
   # first number always constant
@@ -297,7 +323,7 @@ def logit(x, y, wini=np.array([0.0,0.0,0.0]), eta=0.01):
 
   return({'w':w,'Es':E, 'count':count}) 
 
-
+# also answers q9
 def q8(runs=100):
   Esum = 0.0
   csum = 0.0
@@ -318,3 +344,4 @@ def q8(runs=100):
   cavg    = csum/runs
   print(Eoutavg)
   return({'Eout':Eoutavg,'epochs':cavg})
+
