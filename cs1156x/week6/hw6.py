@@ -22,6 +22,8 @@ Assume H' in H and that f is fixed. If we use H' instead of H, how does
 deterministic noise behave?
 
   [a] in general, deterministic noise will decrease?
+
+  BOO! got this stupid question wrong.
 """
 
 
