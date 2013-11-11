@@ -322,13 +322,20 @@ fully connected to the layer above it.
 
     10*1 + 2*18 = 46
 
+  [a] 46
+    
 10. What is the maximum possible number of weights that such a network can have?
 
   max seems to be when you have 2 layers.
   for example, with 23 nodes on 1st layer, 13 nodes on the 2nd layer
-
     >>> 10*22 + 23*12 + 13
     509
+
+  The max occurs when you have 22 for the first layer, at 510.
+
     >>> zip( range(1,36), map(lambda(x): 10*(x-1) + (x)*(36-x-1) + (36-x), range(1,36)))
     [(1, 69), (2, 110), (3, 149), (4, 186), (5, 221), (6, 254), (7, 285), (8, 314), (9, 341), (10, 366), (11, 389), (12, 410), (13, 429), (14, 446), (15, 461), (16, 474), (17, 485), (18, 494), (19, 501), (20, 506), (21, 509), (22, 510), (23, 509), (24, 506), (25, 501), (26, 494), (27, 485), (28, 474), (29, 461), (30, 446), (31, 429), (32, 410), (33, 389), (34, 366), (35, 341)]
+
+  [e] 510
+
 """
