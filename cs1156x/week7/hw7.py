@@ -1,0 +1,236 @@
+import sys
+import math
+import re
+import random as rn
+import numpy as np
+
+"""
+import sys
+import hw7 as h
+sys.path.append('/home/jbkim/git/edx/cs1156x/week7')
+reload(h)
+sys.path.append('/home/jbkim/git/edx/cs1156x/week2')
+import hw2 as h2
+"""
+
+"""
+Validation
+==========
+
+In the following problems, use the data provided in the files from previous hw6.
+Use non-linear transformation:
+
+  1 x1 x2 x1^2 x2^2 x1*x2 abs(x1-x2) abs(x1+x2)
+
+1. Split in.dta into training (first 25 samples) and validation (last 10 samples = K).
+   Train on the 25 examples only, using the validation set of 10 examples to select
+   between five models that apply linear regression to phi_0 through phi_k, with k = 3,4,5,6,7.
+   For which model is the classification error on the validation set smallest?
+
+    >>> (Eva, ws) = h.q1(); Eva
+    {3: 0.3, 4: 0.5, 5: 0.20, 6: 0.0, 7: 0.10}
+
+    [d] k = 6  error is zero??
+
+2. Evaludate the out-of-sample error using out.dta on the 5 models to see how well the
+   validation set predicted the best of the 5 models. Which model has the smallest Eout?
+
+    >>> h.q2()
+    {3: 0.42, 4: 0.416, 5: 0.188, 6: 0.084, 7: 0.072}
+  
+    [e] k = 7
+
+3. Reverse the role of training and validation sets; now training with the last 10 examples 
+   and validating with the first 25 examples. Which model has smallest E_validation?
+
+    >>> (Eva,ws) = h.q3(); Eva
+    {3: 0.28, 4: 0.36, 5: 0.20, 6: 0.08, 7: 0.12}
+
+    [d] k = 6  # still the same conclusion?? stupid data or stupid coder?
+
+4. Evaluate the Eout using out.dta. Which model has the smallest Eout?
+
+    >>> h.q4()
+    {3: 0.396, 4: 0.388, 5: 0.284, 6: 0.192, 7: 0.196}
+
+    [d] k = 6
+
+5. What values are closest to the out-of-sample classification error obtained for 
+   the model chosen in each of the above two experiments, respectively?
+
+    q2 had  k = 7  Eout 0.072
+    q4 had  k = 6  Eout 0.192
+
+    [b] 0.1, 0.2
+"""
+
+
+def readdata(file="/home/jbkim/git/edx/cs1156x/week6/in.dta"):
+  d = np.genfromtxt(file, dtype=float)
+  return (np.apply_along_axis(lambda(x): x[0:2], 1, d), np.apply_along_axis(lambda(x): x[2], 1, d))
+
+def lm_ridge(X,y,lam=0):
+  Xt = np.transpose(X)
+  k = X.shape[1]
+  lambdaeye = lam*np.eye(k)
+  m = np.matrix(np.dot(Xt, X)+lambdaeye)
+  mi = m.getI()  # what kind of inversion method is this?
+  beta = np.dot(np.dot(mi, Xt), y)
+  return(beta.getA()[0,:])
+
+def transform(x,k=3):
+  x1 = x[0]
+  x2 = x[1]
+  trans = {
+    3 : "[1, x1, x2, x1**2]",
+    4 : "[1, x1, x2, x1**2, x2**2]",
+    5 : "[1, x1, x2, x1**2, x2**2, x1*x2]",
+    6 : "[1, x1, x2, x1**2, x2**2, x1*x2, abs(x1-x2)]",
+    7 : "[1, x1, x2, x1**2, x2**2, x1*x2, abs(x1-x2), abs(x1+x2)]",
+  } 
+  formula = trans[k]
+  return(eval(formula))
+  # return( [1,x1,x2,x1**2,x2**2,x1*x2,abs(x1-x2),abs(x1+x2)])
+
+def calc_class(x,w,k=3):
+  z = transform(x,k)
+  y = np.dot(z,w)
+  return(1 if y>=0 else -1)
+
+def geterr(X,y,w,k=3):
+  n = X.shape[0]
+  yhat = np.apply_along_axis(calc_class, 1, X, w,k)
+  # true/false numerical conversion gives 1/0
+  errcount = 1.0*np.sum( y*yhat < 0 )
+  return(errcount/n)
+
+def q1():
+  (x,y) = readdata("/home/jbkim/git/edx/cs1156x/week6/in.dta")  
+  xin,yin = x[0:25],y[0:25] # training set:   first 25
+  xva,yva = x[25:],y[25:]   # validation set: last 10 
+  Eva = dict()
+  ws = dict()
+  for k in range(3,8):
+    zin = np.apply_along_axis(transform, 1, xin, k)
+    w = lm_ridge(zin,yin,lam=0)
+    # print(w)
+    ws[k] = w
+    Eva[k] = geterr(xva,yva,w,k)
+  return(Eva,ws)
+
+def q2():
+  (xout,yout) = readdata("/home/jbkim/git/edx/cs1156x/week6/out.dta")  
+  (Eva, ws) = q1()  # q1 already computed the weights for 5 models
+  Eout = dict()
+  for k in ws.keys():
+    w = ws[k]
+    Eout[k] = geterr(xout,yout,w,k)
+  return(Eout)
+
+def q3():
+  (x,y) = readdata("/home/jbkim/git/edx/cs1156x/week6/in.dta")
+  xva,yva = x[0:25],y[0:25] # validation set:  first 25
+  xin,yin = x[25:],y[25:]   # training set:    last 10
+  Eva = dict()
+  ws = dict()
+  for k in range(3,8):
+    zin = np.apply_along_axis(transform, 1, xin, k)
+    w = lm_ridge(zin,yin,lam=0)
+    # print(w)
+    ws[k] = w
+    Eva[k] = geterr(xva,yva,w,k)
+  return(Eva,ws)
+
+def q4():
+  (xout,yout) = readdata("/home/jbkim/git/edx/cs1156x/week6/out.dta")  
+  (Eva, ws) = q3()  # q3 has reversed training and validation dataset
+  Eout = dict()
+  for k in ws.keys():
+    w = ws[k]
+    Eout[k] = geterr(xout,yout,w,k)
+  return(Eout)
+
+
+"""
+Estimators
+==========
+
+6. Let e1 and e2 be independent random var, uniformly distributed over [0,1]. 
+   Let e = min(e1,e2). The expected values of e1,e2,e are closest to:
+
+    >>> h.q6(n=1000000)
+    (0.49999217060921713, 0.5000692639532694, 0.33325569974328545)
+
+    [c] 0.5,0.5,0.25 ?
+    [d] 0.5,0.5,0.4 ??  # closer to d... hmmm...
+"""
+
+def q6(n=1000):
+  e1sum = 0.0
+  e2sum = 0.0
+  esum  = 0.0
+  for i in range(n):
+    # e1,e2 = rn.uniform(0,1), rn.uniform(0,1)
+    e1    = rn.uniform(0,1)
+    e2    = rn.uniform(0,1)
+    e     = min(e1,e2)
+    e1sum += e1; e2sum += e2; esum += e
+  return(e1sum/n, e2sum/n, esum/n)
+
+
+"""
+Cross Validation
+================
+
+"""
+
+
+"""
+PLA vs SVM
+==========
+
+Use Scikit Learn for this problem:
+http://scikit-learn.org/stable/modules/svm.html
+
+>>> from sklearn import svm
+>>> X = [[0,0],[1,1]]
+>>> y = [0,1]
+>>> clf=svm.SVC()
+>>> clf.fit(X,y)
+SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0, degree=3, gamma=0.0,
+  kernel='rbf', max_iter=-1, probability=False, random_state=None,
+  shrinking=True, tol=0.001, verbose=False)
+>>> clf.predict([[2.,2.]])
+array([1])
+>>> clf.support_vectors_
+array([[ 0.,  0.],
+       [ 1.,  1.]])
+>>> clf.support_
+array([0, 1])
+>>> clf.n_support_
+array([1, 1])
+
+For each run, you will create your own target function f and dataset D. Take
+d = 2 and choose a random line in the plane as your target function f
+(do this by taking two runif points on [-1,1] x [-1,1] and taking the line
+passing through them), where one side of the line maps to +1 and the other -1.
+Choose the inputs x_n of the datset as random points in X = [-1,1]x[-1,1],
+and evaludate the target function on each x_n to get the corresponding output
+y_n. If all data points are on the one side of the line, discard the run and
+start a new run.
+
+Start PLA with the all-zero vector and pick the misclassified point for each
+PLA iteration at random. Run PLA to find the final hypothesis g_PLA and measure
+the disagreement between f and g_PLA as P[f(x) != g_PLA(x)] (you can either
+calculate this exactly, or approximate it by generating a sufficiently large 
+separate set of points to evaluate it). Now run SVM on the same data to find
+the final hypothesis g_SVM by solving:
+
+  min_w,b  1/2 w'w
+  s.t      y_n (w'x_n + b) >= 1
+
+using quadratic programming on the primal or the dual problem. Measure the 
+disagreement between f and g_SVM as P[f(x) != g_SVM(x)], and count the number
+of support vectors you get in each run.
+
+"""
