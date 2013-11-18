@@ -3,6 +3,7 @@ import math
 import re
 import random as rn
 import numpy as np
+from sklearn import svm
 
 """
 import sys
@@ -182,6 +183,11 @@ def q6(n=1000):
 Cross Validation
 ================
 
+You are givren the data points: (-1,0),(p,1),(1,0), p>=0, and a choice between 
+two models: constant [h_0(x) = b] and linear [h_1(x) = ax+b]. For which value
+of p would the two models be tid using leave-one-out cross-validation with the
+squared error measure?
+
 """
 
 
@@ -233,4 +239,151 @@ using quadratic programming on the primal or the dual problem. Measure the
 disagreement between f and g_SVM as P[f(x) != g_SVM(x)], and count the number
 of support vectors you get in each run.
 
+
+8. For N = 10, repeat the above experiment for 100 runs. How often is g_SVM better
+   than g_PLA in approximating f? The percentage of time is closest to:
+
+  {'E_pla': 0.090643000000000001, 'svm_win': 0.56100000000000005, 'E_svm': 0.081175999999999998}
+
+  [c] 60%
+
+
+9. Repeat the same experiment with N = 100
+
+  {'E_pla': 0.01465, 'svm_win': 0.60699999999999998, 'E_svm': 0.011032, 'n_support': 2.999}
+
+  [d] 70% ??  
+
+
+10. For the case N = 100, which is the closest to avg number of support vectors of g_SVM?
+
+  [b] 3
+
 """
+
+def getclass(x,w):
+  y = np.dot(x,w)
+  return(1 if y>=0 else -1)
+
+def getsample(d=2):
+  # first number always constant
+  x = np.array([1] + [rn.uniform(-1,1) for i in range(d)])
+  return(x)
+
+# weight vector is orthogonal to the line: orthogonal vector has negative inverse of slope
+#    y -  m*x -    b > 0 ? 1 : 0
+# w2*y - w1*x - w2*b > 0 ? 1 : 0
+def genline():
+  a = getsample(2)
+  b = getsample(2)
+  w1 = (b[2]-a[2])  # change in y or x2
+  w2 = (b[1]-a[1])  # change in x or x1
+  slope = w1/w2
+  inter = a[2] - slope * a[1]
+  w = np.array([inter*w2, -w1, w2])
+  return(w)
+
+def genxy(n=100, w=genline()):
+  x = np.array([getsample(2) for i in range(n)])
+  y = np.apply_along_axis(getclass, 1, x, w)
+  if(abs(np.sum(y)) == n):
+    print "regenerating because output all in the same class"
+    return(genxy(n,w)) # do it again if it's all the same class
+  else:
+    return(x,y)
+
+def platrain(x,y,w=None):
+  """
+  An alternative on sklearn:
+  >>> from sklearn import linear_model
+  >>> clflin = linear_model.Perceptron()
+  >>> clflin.fit(D, y)
+  >>> y_PLA=clflin.predict(D_out)
+  """
+  converged = False
+  n = x.shape[0]
+  if w==None:
+    m = x.shape[1]
+    w = np.zeros(m)
+  i = 0
+  while not converged:
+    i += 1
+    misclassified = list() 
+    for j in range(n):
+      y1   = y[j]
+      x1   = x[j]
+      # print(x1)
+      yhat = getclass(x1,w)
+      if y1 * yhat < 0:
+        misclassified.append(j)
+    if len(misclassified)==0: 
+      converged = True
+    else:
+      jrand = rn.sample(misclassified, 1)[0] # random point to use for updating
+      w = w + y[jrand] * x[jrand]
+  return({'w':w, 'iter':i})
+
+def platest(x,y,w):
+  n = x.shape[0]
+  yhat = np.apply_along_axis(getclass, 1, x, w)
+  # true/false numerical conversion gives 1/0
+  errcount = 1.0*np.sum( y*yhat < 0 )
+  return(errcount/n)
+
+
+def svmtrain(x,y,w=None):
+  """
+  >>> from sklearn import svm
+  >>> X = [[0,0],[1,1]]
+  >>> y = [0,1]
+  >>> clf=svm.SVC()
+  >>> clf.fit(X,y)
+  SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0, degree=3, gamma=0.0,
+    kernel='rbf', max_iter=-1, probability=False, random_state=None,
+    shrinking=True, tol=0.001, verbose=False)
+  >>> clf.predict([[2.,2.]])
+  array([1])
+  >>> clf.support_vectors_
+  array([[ 0.,  0.],
+         [ 1.,  1.]])
+  >>> clf.support_
+  array([0, 1])
+  >>> clf.n_support_
+  array([1, 1])
+  """
+  xl = x.tolist() 
+  yl = y.tolist()
+  clf = svm.SVC(kernel='linear', C=1.0e6)
+  # clf = svm.SVC(kernel='linear')
+  clf.fit(xl,yl)
+  return({'w':clf.coef_, 'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
+
+# the svm object clf contains function to predict
+def svmtest(x,y,clf):
+  xl = x.tolist()
+  yl = y.tolist()
+  yhat = clf.predict(xl)
+  n = len(yhat)
+  errcount = 0.0
+  for i in range(n):
+    if(yhat[i]*yl[i] < 0):
+      errcount += 1
+  return(errcount/n)
+
+# use this function for q9, q10 as well
+def q8(N=10, repeat=1000):
+  E_pla = np.zeros(repeat)    
+  E_svm = np.zeros(repeat)
+  n_svm_sum = 0.0
+  for i in range(repeat):
+    print "run %d" % i
+    (xin,yin) = genxy(n=N)
+    respla = platrain(xin,yin)
+    ressvm = svmtrain(xin,yin)
+    (xout,yout) = genxy(n=5000)
+    E_pla[i] = platest(xout,yout,respla['w'])
+    E_svm[i] = svmtest(xout,yout,ressvm['clf'])
+    n_svm_sum += ressvm['n_support']
+
+  svmbetter = 1.0*np.sum(E_svm < E_pla)
+  return({'E_pla':np.mean(E_pla),'E_svm':np.mean(E_svm),'svm_win':svmbetter/repeat,'n_support':n_svm_sum/repeat})
