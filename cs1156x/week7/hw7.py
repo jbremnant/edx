@@ -256,9 +256,9 @@ of support vectors you get in each run.
 8. For N = 10, repeat the above experiment for 100 runs. How often is g_SVM better
    than g_PLA in approximating f? The percentage of time is closest to:
 
-  1st run
+  1st run with 1000 oos
   {'E_pla': 0.090643000000000001, 'svm_win': 0.56100000000000005, 'E_svm': 0.081175999999999998}
-  2nd run
+  2nd run with 5000 oos
   {'E_pla': 0.087777600000000011, 'svm_win': 0.51300000000000001, 'E_svm': 0.087779200000000002, 'n_support': 2.841}
 
   [c] 60%
@@ -266,7 +266,9 @@ of support vectors you get in each run.
 
 9. Repeat the same experiment with N = 100
 
+  1st run with 1000 oos
   {'E_pla': 0.01465, 'svm_win': 0.60699999999999998, 'E_svm': 0.011032, 'n_support': 2.999}
+  1st run with 5000 oos
   {'E_pla': 0.018764800000000002, 'svm_win': 0.75600000000000001, 'E_svm': 0.0114786, 'n_support': 3.481}
 
   [d] 70% 
@@ -370,8 +372,7 @@ def svmtrain(x,y,w=None):
   """
   # xl = x.tolist() 
   # yl = y.tolist()
-  clf = svm.SVC(kernel='linear', C=1000)
-  # clf = svm.SVC(kernel='linear')
+  clf = svm.SVC(kernel='linear', C=1000) # apparently C param here really matters
   clf.fit(x,y)
   return({'w':clf.coef_, 'b':clf.intercept_,'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
 
@@ -407,15 +408,15 @@ def mysvmtrain(xmat,y,w=None):
     h.mysvmtrain(x,y)['w']
   """
   xN = np.dot(xmat, xmat.transpose()) # N x N size matrix. huge!
-  yN = np.outer(y, y) # because y is just a vector
-  Q = yN * xN
-  func    = lambda x: 0.5 * np.dot(np.dot(x.transpose(), Q), x) - np.dot(np.ones(len(x)),x)
-  eqcon   = lambda x: np.dot(y,x)
-  ineqcon = lambda x: np.array(x)
+  yN = np.outer(y, y)                 # because y is just a vector, you do outer product
+  Q = yN * xN                         # itemwise mult
+  objfunc = lambda x: 0.5 * np.dot(np.dot(x.transpose(), Q), x) - np.dot(np.ones(len(x)),x)
+  eqcon   = lambda x: np.dot(y,x)     # equality constraint, single scalar value
+  ineqcon = lambda x: np.array(x)     # inequality constraint, vector constraints
   bounds  = [(0.0, 1e16) for i in range(xmat.shape[0])] 
-  x0 = np.array([rn.uniform(0,1) for i in range(xmat.shape[0])])
+  x0 = np.array([rn.uniform(0,1) for i in range(xmat.shape[0])]) # random starting point
   # alpha = sci.fmin_slsqp(func, x0, eqcons=[eqcon], bounds=bounds)
-  alpha = sci.fmin_slsqp(func, x0, eqcons=[eqcon], f_ieqcons=ineqcon)
+  alpha = sci.fmin_slsqp(objfunc, x0, eqcons=[eqcon], f_ieqcons=ineqcon)
 
   w = np.apply_along_axis(lambda x: np.sum(alpha * y * x), 0, xmat)
   i = np.where(alpha > 0.001)[0][1] # first support vector where alpha is greater than zero
