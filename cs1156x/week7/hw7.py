@@ -4,6 +4,7 @@ import re
 import random as rn
 import numpy as np
 from sklearn import svm
+import scipy.optimize as sci
 
 """
 import sys
@@ -185,8 +186,16 @@ Cross Validation
 
 You are givren the data points: (-1,0),(p,1),(1,0), p>=0, and a choice between 
 two models: constant [h_0(x) = b] and linear [h_1(x) = ax+b]. For which value
-of p would the two models be tid using leave-one-out cross-validation with the
+of p would the two models be tied using leave-one-out cross-validation with the
 squared error measure?
+
+           p        
+           |
+      o----|----o
+           |
+           |
+
+  run1 =  
 
 """
 
@@ -198,23 +207,27 @@ PLA vs SVM
 Use Scikit Learn for this problem:
 http://scikit-learn.org/stable/modules/svm.html
 
->>> from sklearn import svm
->>> X = [[0,0],[1,1]]
->>> y = [0,1]
->>> clf=svm.SVC()
->>> clf.fit(X,y)
-SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0, degree=3, gamma=0.0,
-  kernel='rbf', max_iter=-1, probability=False, random_state=None,
-  shrinking=True, tol=0.001, verbose=False)
->>> clf.predict([[2.,2.]])
-array([1])
->>> clf.support_vectors_
-array([[ 0.,  0.],
-       [ 1.,  1.]])
->>> clf.support_
-array([0, 1])
->>> clf.n_support_
-array([1, 1])
+  >>> from sklearn import svm
+  >>> X = [[0,0],[1,1]]
+  >>> y = [0,1]
+  >>> clf=svm.SVC()
+  >>> clf.fit(X,y)
+  SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0, degree=3, gamma=0.0,
+    kernel='rbf', max_iter=-1, probability=False, random_state=None,
+    shrinking=True, tol=0.001, verbose=False)
+  >>> clf.predict([[2.,2.]])
+  array([1])
+  >>> clf.support_vectors_
+  array([[ 0.,  0.],
+         [ 1.,  1.]])
+  >>> clf.support_
+  array([0, 1])
+  >>> clf.n_support_
+  array([1, 1])
+
+You can probably do it using a quadratic solver as well. Look into:
+
+  scipy.optimize.fmin_slsqp
 
 For each run, you will create your own target function f and dataset D. Take
 d = 2 and choose a random line in the plane as your target function f
@@ -243,7 +256,10 @@ of support vectors you get in each run.
 8. For N = 10, repeat the above experiment for 100 runs. How often is g_SVM better
    than g_PLA in approximating f? The percentage of time is closest to:
 
+  1st run
   {'E_pla': 0.090643000000000001, 'svm_win': 0.56100000000000005, 'E_svm': 0.081175999999999998}
+  2nd run
+  {'E_pla': 0.087777600000000011, 'svm_win': 0.51300000000000001, 'E_svm': 0.087779200000000002, 'n_support': 2.841}
 
   [c] 60%
 
@@ -251,8 +267,9 @@ of support vectors you get in each run.
 9. Repeat the same experiment with N = 100
 
   {'E_pla': 0.01465, 'svm_win': 0.60699999999999998, 'E_svm': 0.011032, 'n_support': 2.999}
+  {'E_pla': 0.018764800000000002, 'svm_win': 0.75600000000000001, 'E_svm': 0.0114786, 'n_support': 3.481}
 
-  [d] 70% ??  
+  [d] 70% 
 
 
 10. For the case N = 100, which is the closest to avg number of support vectors of g_SVM?
@@ -351,12 +368,12 @@ def svmtrain(x,y,w=None):
   >>> clf.n_support_
   array([1, 1])
   """
-  xl = x.tolist() 
-  yl = y.tolist()
-  clf = svm.SVC(kernel='linear', C=1.0e6)
+  # xl = x.tolist() 
+  # yl = y.tolist()
+  clf = svm.SVC(kernel='linear', C=1000)
   # clf = svm.SVC(kernel='linear')
-  clf.fit(xl,yl)
-  return({'w':clf.coef_, 'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
+  clf.fit(x,y)
+  return({'w':clf.coef_, 'b':clf.intercept_,'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
 
 # the svm object clf contains function to predict
 def svmtest(x,y,clf):
@@ -370,6 +387,37 @@ def svmtest(x,y,clf):
       errcount += 1
   return(errcount/n)
 
+
+def mysvmtrain(xmat,y,w=None):
+  """
+  Solve the problem:
+    L(a) = sum_{n=1}^{N} a_n - 1/2 sum_{n=1}^{N} sum_{m=1}^{N} y_n y_m a_n a_m x_n' x_m
+
+    min(a) 1/2 a' Q a + (-1') a
+    s.t.  y'a = 0
+          0 <= a <= inf
+
+    Use the scipy.optimize function called fmin_slsqp:
+      http://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html
+  """
+  xmat = xmat[:,1:3] # take intercept out because SVM qp doesn't require this
+  xN = np.dot(xmat, xmat.transpose())
+  yN = np.outer(y, y) # because y is just a vector
+  Q = yN * xN
+  func    = lambda x: 0.5 * np.dot(np.dot(x.transpose(), Q), x) - np.dot(np.ones(len(x)),x)
+  eqcon   = lambda x: np.dot(y,x)
+  ineqcon = lambda x: np.array(x)
+  bounds  = [(0.0, 1e16) for i in range(xmat.shape[0])] 
+  x0 = np.array([rn.uniform(0,1) for i in range(xmat.shape[0])])
+  # alpha = sci.fmin_slsqp(func, x0, eqcons=[eqcon], bounds=bounds)
+  alpha = sci.fmin_slsqp(func, x0, eqcons=[eqcon], f_ieqcons=ineqcon)
+
+  w = np.apply_along_axis(lambda x: np.sum(alpha * y * x), 0, xmat)
+  i = np.where(alpha > 0.001)[0][1] # first support vector where alpha is greater than zero
+  b = 1.0/y[i] - np.dot(w, xmat[i])
+  return({'alpha':alpha, 'w':w, 'b':b})
+
+
 # use this function for q9, q10 as well
 def q8(N=10, repeat=1000):
   E_pla = np.zeros(repeat)    
@@ -379,10 +427,10 @@ def q8(N=10, repeat=1000):
     print "run %d" % i
     (xin,yin) = genxy(n=N)
     respla = platrain(xin,yin)
-    ressvm = svmtrain(xin,yin)
-    (xout,yout) = genxy(n=5000)
+    ressvm = svmtrain(xin[:,1:3],yin)
+    (xout,yout) = genxy(n=2000)
     E_pla[i] = platest(xout,yout,respla['w'])
-    E_svm[i] = svmtest(xout,yout,ressvm['clf'])
+    E_svm[i] = svmtest(xout[:,1:3],yout,ressvm['clf'])
     n_svm_sum += ressvm['n_support']
 
   svmbetter = 1.0*np.sum(E_svm < E_pla)
