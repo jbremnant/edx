@@ -399,9 +399,14 @@ def mysvmtrain(xmat,y,w=None):
 
     Use the scipy.optimize function called fmin_slsqp:
       http://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html
+
+  NOTE: SVM doesn't require you to feed in the x0 for the intercept.
+  Compare: 
+    (x,y) = h.genxy(10)
+    h.svmtrain(x,y)['w']
+    h.mysvmtrain(x,y)['w']
   """
-  xmat = xmat[:,1:3] # take intercept out because SVM qp doesn't require this
-  xN = np.dot(xmat, xmat.transpose())
+  xN = np.dot(xmat, xmat.transpose()) # N x N size matrix. huge!
   yN = np.outer(y, y) # because y is just a vector
   Q = yN * xN
   func    = lambda x: 0.5 * np.dot(np.dot(x.transpose(), Q), x) - np.dot(np.ones(len(x)),x)
