@@ -29,7 +29,10 @@ Primal versus Dual Problem
       min 1/2 w'w
       s.t.  y_n (w' x_n + b) >= 1  for n = 1,2,...,N
 
-    [c] a quadratic programming problem with d variables
+    [c] a quadratic programming problem with d variables  WRONG
+    [d] d + 1 CORRECT
+
+  Kidding me? I was supposed to count "b" too!!!??
 """
 
 
@@ -228,7 +231,11 @@ to a particular choice.
               (0.1, 0.005639),
               (1.0, 0.0058949)]}
 
-    [c] C = 0.01 is selected the most often
+    
+    [c] C = 0.01 is selected the most often  X Wrong!
+    
+    Drats!! this is stupid. I think the answer is [b]. On simulations, it was
+    always either [b] or [c]
 
 8. Again, consider the 1 versus 5 classifier with Q = 2. For the winning selection in the
    previous problem, the average value of Ecv over the 100 runs is closest to
