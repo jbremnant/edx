@@ -4,6 +4,7 @@ import re
 import random as rn
 import numpy as np
 from sklearn import svm
+from sklearn import cross_validation
 import scipy.optimize as sci
 
 """
@@ -119,9 +120,9 @@ def readdata(file="/home/jbkim/Development/edx/cs1156x/week8/features.train"):
   d = np.genfromtxt(file, dtype=float)
   return(np.apply_along_axis(lambda(x): x[1:3],1,d), np.apply_along_axis(lambda(x): x[0],1,d))
 
-def getbinary(y,digit=0):
+def getbinary(y,choice=0):
   z=np.ones(len(y))
-  z[y!=digit] = -1
+  z[y!=choice] = -1
   return(z)
 
 def poly_kernel(x,y):
@@ -132,8 +133,7 @@ def poly_kernel(x,y):
 #  polynomial: (gamma*(x,x') + coef0)^degree
 #  rbf:        exp(-gamma*||x,x'||^2)
 #  sigmoid:    tanh(-gamma*(x,x') + coef0)
-def runsvm(x,ydigit, choice=0, C=0.01, Q=2):
-  y = getbinary(ydigit, choice)
+def runsvm(x,y, C=0.01, Q=2):
   # linear kernel would look like this
   # clf = svm.SVC(kernel='linear', C=C)
   # clf.fit(x, y2) 
@@ -148,11 +148,11 @@ def runsvm(x,ydigit, choice=0, C=0.01, Q=2):
 
 def q2():
   (x,y) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
-  r0 = runsvm(x,y, choice=0, C=0.01, Q=2)
-  r2 = runsvm(x,y, choice=2, C=0.01, Q=2)
-  r4 = runsvm(x,y, choice=4, C=0.01, Q=2)
-  r6 = runsvm(x,y, choice=6, C=0.01, Q=2)
-  r8 = runsvm(x,y, choice=8, C=0.01, Q=2)
+  r0 = runsvm(x,getbinary(y,choice=0), C=0.01, Q=2)
+  r2 = runsvm(x,getbinary(y,choice=2), C=0.01, Q=2)
+  r4 = runsvm(x,getbinary(y,choice=4), C=0.01, Q=2)
+  r6 = runsvm(x,getbinary(y,choice=6), C=0.01, Q=2)
+  r8 = runsvm(x,getbinary(y,choice=8), C=0.01, Q=2)
   return({
     'Ein0':r0['Ein'],
     'Ein2':r2['Ein'],
@@ -162,11 +162,11 @@ def q2():
 
 def q3():
   (x,y) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
-  r1 = runsvm(x,y, choice=1, C=0.01, Q=2)
-  r3 = runsvm(x,y, choice=3, C=0.01, Q=2)
-  r5 = runsvm(x,y, choice=5, C=0.01, Q=2)
-  r7 = runsvm(x,y, choice=7, C=0.01, Q=2)
-  r9 = runsvm(x,y, choice=9, C=0.01, Q=2)
+  r1 = runsvm(x,getbinary(y, choice=1), C=0.01, Q=2)
+  r3 = runsvm(x,getbinary(y, choice=3), C=0.01, Q=2)
+  r5 = runsvm(x,getbinary(y, choice=5), C=0.01, Q=2)
+  r7 = runsvm(x,getbinary(y, choice=7), C=0.01, Q=2)
+  r9 = runsvm(x,getbinary(y, choice=9), C=0.01, Q=2)
   return({
     'Ein1':r1['Ein'],
     'Ein3':r3['Ein'],
@@ -176,30 +176,29 @@ def q3():
 
 def q4():
   (x,y) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
-  return(h.runsvm(x,y,choice=0)['n_support'] - h.runsvm(x,y,choice=1)['n_support'])
+  return(runsvm(x,getbinary(y,choice=0))['n_support'] - 
+         runsvm(x,getbinary(y,choice=1))['n_support'])
 
 def q5(Cs=[0.001,0.01,0.1,1.0], Q=2):
   (x,y)       = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
   idx = np.logical_or(y==1,y==5)
-  x = x[idx,:]
-  y = y[idx]
-
+  x   = x[idx,:]
+  y   = getbinary(y[idx],1)
   (xout,yout) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.test")
-  idx = np.logical_or(yout==1,yout==5)
+  idx  = np.logical_or(yout==1,yout==5)
   xout = xout[idx,:]
-  yout = yout[idx]
-  ybin = getbinary(yout,1)
+  yout = getbinary(yout[idx],1)
 
   Ein  = []
   Eout = []
   nsv  = []
   for C in Cs:
-    r = runsvm(x,y, choice=1, C=C, Q=Q)
+    r = runsvm(x,y, C=C, Q=Q)
     Ein.append(r['Ein'])
     nsv.append(r['n_support'])
     clf  = r['clf']
     yhat = clf.predict(xout)
-    Eout.append( np.sum( ybin*yhat < 0 ) / (1.*ybin.size) )
+    Eout.append( np.sum( yout*yhat < 0 ) / (1.*yout.size) )
   return({'Ein':Ein,'Eout':Eout,'nsv':nsv})
 
 def q6():
@@ -216,6 +215,120 @@ kernel. Because Ecv is a random variable that depends on the random partition of
 will try 100 runs with different partitions, and base our answer on the number of runs that lead
 to a particular choice.
 
-7. Consider the 1 versus
+7. Consider the 1 versus 5 classifier with Q = 2. We use Ecv to select
+   C in [0.0001,0.001,0.01,0.1,1]. If there is a tie in Ecv, select the smaller C. Within the 100
+   random runs, which of the following statements is correct?
+
+    # hmm.. randomness makes these results rather sensitive. Doing 500 iterations
+    >>> h.q7()
+    {'wins': [(0.0001, 0), (0.001, 22), (0.01, 33), (0.1, 23), (1.0, 22)],
+     'Ecv':  [(0.0001, 0.005631),
+              (0.001, 0.006023),
+              (0.01, 0.005894),
+              (0.1, 0.005639),
+              (1.0, 0.0058949)]}
+
+    [c] C = 0.01 is selected the most often
+
+8. Again, consider the 1 versus 5 classifier with Q = 2. For the winning selection in the
+   previous problem, the average value of Ecv over the 100 runs is closest to
+
+    [c] 0.005
 
 """
+
+# k-fold cross validation version of SVM
+def runsvm_cv(x,y,C=0.0001,Q=2,folds=10):
+  kf = cross_validation.KFold(len(y), n_folds=folds, shuffle=True)
+  Ecv = np.array([])
+  Ein = np.array([])
+  nsv = np.array([])
+  i = 0
+  for train,test in kf:
+    x_train, x_test, y_train, y_test = x[train],x[test],y[train],y[test]
+    # print('fold %d: train_n %d, test_n %d' % (i, len(train), len(test)))
+    r = runsvm(x_train,y_train,C=C,Q=Q)
+    Ein = np.append(Ein, r['Ein'])
+    nsv = np.append(nsv, r['n_support'])
+    clf  = r['clf']
+    y_pred = clf.predict(x_test) 
+    Ecv = np.append(Ecv, np.sum(y_test*y_pred<0) / (1.*y_pred.size) )
+    i += 1
+  return({'Ecv':np.mean(Ecv), 'Ein':np.mean(Ein), 'nsv':np.mean(nsv)})
+
+# use this for q8 as well
+def q7(Cs=[0.0001,0.001,0.01,0.1,1.0], runs=100):
+  (x,y) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
+  idx   = np.logical_or(y==1,y==5)
+  x     = x[idx,:]
+  y     = getbinary(y[idx], choice=1)
+
+  wins      = [0 for i in range(len(Cs))]
+  Ecv       = np.empty( (runs,len(Cs)) )
+  for i in range(runs):
+    print('iter: %d' % i)
+    for j in range(len(Cs)):
+      C = Cs[j]
+      r = runsvm_cv(x,y,C=C,Q=2,folds=10)
+      Ecv[i,j] = r['Ecv']
+      # Ecv = np.append(Ecv, r['Ecv'])
+
+    idx = np.argmin(Ecv[i,:])
+    wins[idx] += 1 
+  return({'wins':zip(Cs,wins), 'Ecv': zip(Cs,np.mean(Ecv,1).tolist())})
+
+
+"""
+RBF Kernel
+==========
+Consider the radial basis function (RBF) kernel K(x_n, x_m) = exp(-||x_n - x_m||^2).
+Forcus on the 1 versus 5 classifier.
+
+9. Which of the following values of C results in the lowest Ein?
+  # C: [0.01,1,100,10**4,10**6]
+  >>> h.q9()
+  {'Eout': [0.023584, 0.021226, 0.018867, 0.023584, 0.023584],
+   'nsv': [406, 31, 22, 19, 17],
+   'Ein': [0.0038436, 0.004484, 0.003203, 0.002562, 0.000640]}
+
+  [e] C = 10^6 
+
+10. Which of the following values of C results in the lowest Eout?
+
+  [c] C = 100
+"""
+
+# SVC implements several kernels:
+#  linear:     (x,x')
+#  polynomial: (gamma*(x,x') + coef0)^degree
+#  rbf:        exp(-gamma*||x,x'||^2)
+#  sigmoid:    tanh(-gamma*(x,x') + coef0)
+def runsvm_rbf(x,y, C=0.01):
+  clf = svm.SVC(kernel='rbf', C=C, gamma=1.)
+  clf.fit(x, y) 
+  yhat = clf.predict(x)
+  Ein = np.sum( y*yhat < 0 ) / (1.*y.size)
+  return({'Ein':Ein, 'b':clf.intercept_,
+          'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
+
+# use this for q10 as well
+def q9(Cs=[0.01,1,100,10**4,10**6]):
+  (x,y)       = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
+  idx = np.logical_or(y==1,y==5)
+  x   = x[idx,:]
+  y   = getbinary(y[idx],1)
+  (xout,yout) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.test")
+  idx  = np.logical_or(yout==1,yout==5)
+  xout = xout[idx,:]
+  yout = getbinary(yout[idx],1)
+  Ein  = []
+  Eout = []
+  nsv  = []
+  for C in Cs:
+    r = runsvm_rbf(x,y, C=C)
+    Ein.append(r['Ein'])
+    nsv.append(r['n_support'])
+    clf  = r['clf']
+    yhat = clf.predict(xout)
+    Eout.append( np.sum( yout*yhat < 0 ) / (1.*yout.size) )
+  return({'Ein':Ein,'Eout':Eout,'nsv':nsv})
