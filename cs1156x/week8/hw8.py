@@ -7,6 +7,10 @@ from sklearn import svm
 from sklearn import cross_validation
 import scipy.optimize as sci
 
+# g_trainfile)
+g_trainfile = "./features.train"
+g_testfile  = "./features.test"
+
 """
 import sys
 sys.path.append('/home/jbkim/Development/edx/cs1156x/week8')
@@ -119,7 +123,7 @@ polynomail.
 """
 
 # (x,y) = h.readdata()
-def readdata(file="/home/jbkim/Development/edx/cs1156x/week8/features.train"):
+def readdata(file=g_trainfile):
   d = np.genfromtxt(file, dtype=float)
   return(np.apply_along_axis(lambda(x): x[1:3],1,d), np.apply_along_axis(lambda(x): x[0],1,d))
 
@@ -150,7 +154,7 @@ def runsvm(x,y, C=0.01, Q=2):
           'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
 
 def q2():
-  (x,y) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
+  (x,y) = readdata(g_trainfile)
   r0 = runsvm(x,getbinary(y,choice=0), C=0.01, Q=2)
   r2 = runsvm(x,getbinary(y,choice=2), C=0.01, Q=2)
   r4 = runsvm(x,getbinary(y,choice=4), C=0.01, Q=2)
@@ -164,7 +168,7 @@ def q2():
     'Ein8':r8['Ein'], })
 
 def q3():
-  (x,y) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
+  (x,y) = readdata(g_trainfile)
   r1 = runsvm(x,getbinary(y, choice=1), C=0.01, Q=2)
   r3 = runsvm(x,getbinary(y, choice=3), C=0.01, Q=2)
   r5 = runsvm(x,getbinary(y, choice=5), C=0.01, Q=2)
@@ -178,20 +182,19 @@ def q3():
     'Ein9':r9['Ein'], })
 
 def q4():
-  (x,y) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
+  (x,y) = readdata(g_trainfile)
   return(runsvm(x,getbinary(y,choice=0))['n_support'] - 
          runsvm(x,getbinary(y,choice=1))['n_support'])
 
 def q5(Cs=[0.001,0.01,0.1,1.0], Q=2):
-  (x,y)       = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
+  (x,y)       = readdata(g_trainfile)
   idx = np.logical_or(y==1,y==5)
   x   = x[idx,:]
   y   = getbinary(y[idx],1)
-  (xout,yout) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.test")
+  (xout,yout) = readdata(g_testfile)
   idx  = np.logical_or(yout==1,yout==5)
   xout = xout[idx,:]
   yout = getbinary(yout[idx],1)
-
   Ein  = []
   Eout = []
   nsv  = []
@@ -265,13 +268,12 @@ def runsvm_cv(x,y,C=0.0001,Q=2,folds=10):
 
 # use this for q8 as well
 def q7(Cs=[0.0001,0.001,0.01,0.1,1.0], runs=100):
-  (x,y) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
+  (x,y) = readdata(g_trainfile)
   idx   = np.logical_or(y==1,y==5)
   x     = x[idx,:]
   y     = getbinary(y[idx], choice=1)
-
-  wins      = [0 for i in range(len(Cs))]
-  Ecv       = np.empty( (runs,len(Cs)) )
+  wins  = [0 for i in range(len(Cs))]
+  Ecv   = np.empty( (runs,len(Cs)) )
   for i in range(runs):
     print('iter: %d' % i)
     for j in range(len(Cs)):
@@ -279,7 +281,6 @@ def q7(Cs=[0.0001,0.001,0.01,0.1,1.0], runs=100):
       r = runsvm_cv(x,y,C=C,Q=2,folds=10)
       Ecv[i,j] = r['Ecv']
       # Ecv = np.append(Ecv, r['Ecv'])
-
     idx = np.argmin(Ecv[i,:])
     wins[idx] += 1 
   return({'wins':zip(Cs,wins), 'Ecv': zip(Cs,np.mean(Ecv,1).tolist())})
@@ -320,11 +321,11 @@ def runsvm_rbf(x,y, C=0.01):
 
 # use this for q10 as well
 def q9(Cs=[0.01,1,100,10**4,10**6]):
-  (x,y)       = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.train")
+  (x,y)       = readdata(g_trainfile)
   idx = np.logical_or(y==1,y==5)
   x   = x[idx,:]
   y   = getbinary(y[idx],1)
-  (xout,yout) = readdata("/home/jbkim/Development/edx/cs1156x/week8/features.test")
+  (xout,yout) = readdata(g_testfile)
   idx  = np.logical_or(yout==1,yout==5)
   xout = xout[idx,:]
   yout = getbinary(yout[idx],1)
