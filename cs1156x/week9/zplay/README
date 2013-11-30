@@ -1,0 +1,30 @@
+Extending Python with C
+=======================
+
+You can do this in 2 different ways:
+
+* cython
+    http://docs.cython.org/src/quickstart/cythonize.html
+    http://technicaldiscovery.blogspot.com.au/2011/06/speeding-up-python-numpy-cython-and.html
+
+    - You essentially just write python code, and cython just converts
+      the code into C source, which is then compiled into .so file.
+
+    - Declaring static variable types can greatly improve performance.
+
+* directly using Python.h
+    http://www.tutorialspoint.com/python/python_further_extensions.htm
+
+    - You learn the internal C API of python, and compile it manually
+      using distutils.
+
+* ctypes
+    http://dan.iel.fm/posts/python-c-extensions/
+    https://gist.github.com/dfm/3343607
+    
+    - If it's a simple C function that needs data in and out of python, 
+      you can use ctypes to directly translate data as C arrays and call
+      the native C func.
+
+* numpy extension
+    http://docs.scipy.org/doc/numpy/user/c-info.html
