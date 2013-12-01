@@ -69,7 +69,7 @@ Bias and Variance
 """
 Overfitting
 ===========
-3. Which of the following statments is false? (here, FALSE!)
+3. Which of the following statements is false? (here, FALSE!)
 
     [a] If there is overfitting, there must be two or more hypotheses that have diff
         values of Ein
@@ -132,7 +132,7 @@ Regularization
 
   Hmm... the Tikhonov matrix is within inverse term?? None of the choices b,c,d,e are valid.
   Given the fact that the question is asking that w_lin already satisfies the constraint,
-  w_lin is essentially equalt to w_reg:
+  w_lin is essentially equal to w_reg:
 
     [a] w_reg = w_lin
         
