@@ -607,11 +607,12 @@ Core of the Lloyd's algorithm:
 16. Now we focus on regular RBF only, with gamma=1.5. If we go from K=9 clusters to K=12 clusters,
     which of the following 5 vases happens most often in your runs? 
     
-    >>> e = f.q16() # ks = [9,10,11,12]
-    >>> np.mean(e['Ein'],axis=0)
-    array([ 0.0313,  0.027 ,  0.0241,  0.0223])
-    >>> np.mean(e['Eout'],axis=0)
-    array([ 0.0551,  0.0521,  0.0466,  0.0457])
+    >>> e = f.q16(500,ks=[9,12]) 
+    >>> f.checkcount(e)
+    {'Ein_up_Eout_dn': 4.79,
+     'Ein_dn_Eout_dn': 45.79, <<-- both go down
+     'Ein_up_Eout_up': 5.40,
+     'Ein_dn_Eout_up': 13.0}
 
     [a] Ein goes down but Eout goes up
     [b] Ein goes up but Eout goes down
@@ -622,12 +623,21 @@ Core of the Lloyd's algorithm:
 17. For regular RBF with K=9, if we go from gamma=1.5 to gamma=2, which of the following 5 cases
     happens most often in your runs? 
 
+    >>> e = f.q17(runs=500,gammas=[1.5,2.0])
+    >>> f.checkcount(e)
+    {'Ein_up_Eout_dn': 10.19,
+     'Ein_dn_Eout_dn': 13.4,
+     'Ein_up_Eout_up': 32.60, <<-- both go up
+     'Ein_dn_Eout_up': 12.0}
+
+    # average might not be representative of the counts, but without outliers, it's valid
     # this is interesting when you vary the gamma from 1.0 to 2.0 in 0.1 increments
     >>> g = f.q17() # gammas=[1.5,1.6,1.7,1.8,1.9,2.0]
     >>> np.mean(g['Ein'],axis=0)
     array([ 0.03435,  0.03585,  0.0359 ,  0.03665,  0.03875,  0.03975])
     >>> np.mean(g['Eout'],axis=0)
     array([ 0.05555,  0.0578 ,  0.05685,  0.06125,  0.06435,  0.0693 ])
+
 
     [a] Ein goes down but Eout goes up
     [b] Ein goes up but Eout goes down
@@ -741,7 +751,7 @@ def q16(runs=100,ks=[9,10,11,12]):
   Eout = np.empty((runs,len(ks)))
   for i in xrange(runs):
     (xin,yin)   = gendata(100)
-    (xout,yout) = gendata(100)
+    (xout,yout) = gendata(200)
     for j in xrange(len(ks)):
       k = ks[j]
       r = runreg_rbf(xin,yin, gamma=1.5, k=k)
@@ -757,7 +767,7 @@ def q17(runs=100,k=9,gammas=[1.5,1.6,1.7,1.8,1.9,2.0]):
   Eout = np.empty((runs,len(gammas)))
   for i in xrange(runs):
     (xin,yin)   = gendata(100)
-    (xout,yout) = gendata(100)
+    (xout,yout) = gendata(200)
     for j in xrange(len(gammas)):
       gamma = gammas[j]
       r = runreg_rbf(xin,yin, gamma=gamma, k=k)
@@ -768,3 +778,70 @@ def q17(runs=100,k=9,gammas=[1.5,1.6,1.7,1.8,1.9,2.0]):
       Eout[i,j] = np.sum(yhat*yout<0)/(1.*yout.size)
   return({'Ein':Ein,'Eout':Eout})
 
+def checkcount(r):
+  Ein  = r['Ein']
+  Eout = r['Eout']
+  n = 1.*Ein.shape[0]
+  d = dict()
+  d['Ein_dn_Eout_up'] = 100.*np.sum( np.logical_and(Ein[:,0]>Ein[:,1], Eout[:,0]<Eout[:,1]) ) / n
+  d['Ein_up_Eout_dn'] = 100.*np.sum( np.logical_and(Ein[:,0]<Ein[:,1], Eout[:,0]>Eout[:,1]) ) / n
+  d['Ein_up_Eout_up'] = 100.*np.sum( np.logical_and(Ein[:,0]<Ein[:,1], Eout[:,0]<Eout[:,1]) ) / n
+  d['Ein_dn_Eout_dn'] = 100.*np.sum( np.logical_and(Ein[:,0]>Ein[:,1], Eout[:,0]>Eout[:,1]) ) / n
+  return(d)
+
+"""
+Bayesian Priors
+===============
+
+19. Let f in [0,1] be the unknown probability of getting a heart attack for people in a certain
+    population. notice that f is just a constant, not a function, for simplicity. We want to model
+    f using a hypothesis h in [0,1]. Before we see any data, we assume that P(h=f) is uniform
+    over h in [0,1] (the prior). We pick one sample from the population, and it turns out that they
+    had a heart attack. Which of the following is true about the posterior probability that h = f
+    given this sample point?
+
+               P(D|h=f) P(h=f)
+    P(h=f|D) = ---------------  proportional to    P(D|h=f) P(h=f)
+                    P(D)
+
+    lecture 18, slide 10/23: "If we knew the prior"
+    
+      ... we could compute P(h=f|D) for every h in H
+      * we can find the most probable h given the data
+      * we can derive Expectation[h(x)] for every X
+      * we can derive the error bar for every X
+      * we can derive everthing in a principled way
+
+    Here, 
+
+      P(h=f)   is unif[0,1]
+      P(D|h=f) given D, we can compute this qty? is this Ein? (lecture 18, slide 8)   
+
+    [a] The posterior is uniform over [0,1]
+    [b] The posterior increases linearly over [0,1]
+    [c] The posterior increases nonlinearly over [0,1]
+    [d] The posterior is a delta function at 1 (implying f has to be 1)
+  X [e] The posterior cannot be evaluated based on the given information
+
+
+Aggregation
+===========
+
+20. Given two learned hypotheses g1 and g2, we construct the aggregate hypothesis g giving by 
+    g(x) = 1/2(g1(x) + g2(x)) for all x in X. If we use mean-squared error, which of the following
+    statements is true?
+
+    [a] Eout(g) cannot be worse than Eout(g1)
+      : FALSE, there's no particular information about Eout(g1) over Eout(g2)
+    [b] Eout(g) cannot be worse than the smaller of Eout(g1) and Eout(g2)
+      : FALSE, intuitively, this is the average function, not the minimum... when the error for
+        g1 and g2 are different, averaging their hypothesis would yield not the minimum of the two? 
+    [c] Eout(g) cannot be worse than the average of Eout(g1) and Eout(g2)
+      : FALSE, if g1 and g2 are orthogonal, it _could_ create combined hypothesis that can be worse
+        than the average error of the two?
+  X [d] Eout(g) has to be between Eout(g1) and Eout(g2) (including the end values of that interval)
+      : it's reasonable to think that the error falls between the values. If g1==g2, then Eout(g) 
+        should be exactly Eout(g1) or Eout(g2). If g1!=g2, the resulting error should be between 
+        the better and the worse Eout of the two.
+    [e] None of the above
+"""
