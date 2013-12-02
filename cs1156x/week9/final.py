@@ -15,6 +15,8 @@ import numpy as np
 from sklearn import svm
 from sklearn import cross_validation
 import scipy.optimize as sci
+from scipy.spatial.distance import pdist,squareform
+import matplotlib.pyplot as pl
 
 g_trainfile = "../week8/features.train"
 g_testfile  = "../week8/features.test"
@@ -140,15 +142,15 @@ Regularization
 6. Soft-order constraints that regularize polynomial models can be
 
     [a] written as hard-order constraints
-        : refer to svm soft,hard constraints 
+      : 
   X [b] translated into augmented error
-        : hmm..
+      : using constraints, you regularize the hypothesis which lends to Eaug (augmented error)
     [c] determined from the value of the VC dimension
-    
+      : no...
     [d] used to decrease both Ein and Eout
-        : NO, appropriate regularization will bolster Eout
+      : NO, regularization will penalize Ein and make it worse, but make Ein approximate Eout better
     [e] none of the above is true
-        : [b] might be true?
+      : [b] might be true?
 """
 
 """
@@ -345,7 +347,8 @@ y = np.array([ -1,    -1,    -1,     1,      1,     1,      1      ])
   and b specify the separating plane w'z + b = 0 in the Z space that maximizes the margin?
   The values of w1,w2,b are:
 
-    >>> f.zspace(x)
+    >>> (x,y) = f.q11data()
+    >>> z = f.zspace(x)
     array([[-3,  2],
        [ 0, -1],
        [ 0,  3],
@@ -387,7 +390,7 @@ y = np.array([ -1,    -1,    -1,     1,      1,     1,      1      ])
        [ 0, -2],
        [-2,  0]])
 
-    >>> f.runsvm(x,y,C=10e6, Q=2)
+    >>> f.runsvm_pol(x,y,C=10e6, Q=2)
     {'clf': SVC(C=10000000.0, cache_size=200, class_weight=None, coef0=1, degree=2,
       gamma=1, kernel='poly', max_iter=-1, probability=False,
       random_state=None, shrinking=True, tol=0.001, verbose=False), 'b': array([-1.66633088]), 'n_support': 5, 'Ein': 0.0}
@@ -404,6 +407,11 @@ y = np.array([ -1,    -1,    -1,     1,      1,     1,      1      ])
 
     [c] 4-5
 """
+
+def q11data():
+  x = np.array([ [1,0], [0,1], [0,-1], [-1,0], [0,2], [0,-2], [-2,0] ])
+  y = np.array([ -1,    -1,    -1,     1,      1,     1,      1      ])
+  return(x,y)
 
 def zspace(x):
   z = np.apply_along_axis(lambda(x): np.array([x[1]**2 - 2*x[0] - 1, x[0]**2 - 2*x[1] + 1]), 1, x)
@@ -422,7 +430,7 @@ def runsvm_lin(x,y,C=1000000):
   return({'Ein':Ein, 'w':clf.coef_,'b':clf.intercept_,
           'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
 
-def runsvm(x,y, C=0.01, Q=2):
+def runsvm_pol(x,y, C=0.01, Q=2):
   clf = svm.SVC(kernel='poly', C=C, degree=Q, gamma=1, coef0=1)
   clf.fit(x, y)
   yhat = clf.predict(x)
@@ -430,41 +438,333 @@ def runsvm(x,y, C=0.01, Q=2):
   return({'Ein':Ein, 'b':clf.intercept_,
           'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
 
-def runsvm_rbf(x,y, C=0.01):
-  clf = svm.SVC(kernel='rbf', C=C, gamma=1.)
+def runsvm_rbf(x,y, C=0.01,gamma=1.):
+  clf = svm.SVC(kernel='rbf', C=C, gamma=gamma)
   clf.fit(x, y)
   yhat = clf.predict(x)
   Ein = np.sum( y*yhat < 0 ) / (1.*y.size)
   return({'Ein':Ein, 'b':clf.intercept_,
           'clf':clf, 'n_support':clf.support_vectors_.shape[0]})
 
-def mysvm(xmat,y,w=None):
+def mysvm_lin(xmat,y,w=None,C=1e6):
   """
   Solve the problem:
     L(a) = sum_{n=1}^{N} a_n - 1/2 sum_{n=1}^{N} sum_{m=1}^{N} y_n y_m a_n a_m x_n' x_m
 
     min(a) 1/2 a' Q a + (-1') a
     s.t.  y'a = 0
-          0 <= a <= inf
+          0 <= a <= C
 
     Use the scipy.optimize function called fmin_slsqp:
       http://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html
 
   NOTE: SVM doesn't require you to feed in the x0 for the intercept.
+
+  Hmm.. checking this against the libsvm results in different answers!
+  >>> f.mysvm_lin(x,y, C=1e6)['w']
+  array([-64.30942,  79.1555 ])
+  >>> f.runsvm_lin(x,y, C=1e6)['w']
+  array([[-317.66406,  383.00197]])
   """
-  # xN = np.dot(xmat, xmat.transpose()) # N x N size matrix: this is for linear svm
-  xN = (1+np.dot(xmat, xmat.transpose()))**2 # polynomial kernel
+  # xN = (1+np.dot(xmat, xmat.transpose()))**2 # polynomial kernel
+  xN = np.dot(xmat, xmat.transpose()) # N x N size matrix: this is for linear svm
   yN = np.outer(y, y)                 # because y is just a vector, you do outer product
   Q = yN * xN                         # itemwise mult
+  # objfunc = lambda x: 0.5 * np.dot(np.dot(x.transpose(), Q), x) - np.dot(np.ones(len(x)),x)
+  objfunc = lambda x: 0.5 * np.dot(np.dot(x.transpose(), Q), x) - np.sum(x)
+  eqcon   = lambda x: np.dot(y,x)     # equality constraint, single scalar value
+  ineqcon = lambda x: np.array(x)     # inequality constraint, vector constraints
+  bounds  = [(0.0, C) for i in range(xmat.shape[0])]
+  x0 = np.array([rn.uniform(0.,1./y.size) for i in range(xmat.shape[0])]) # random starting point
+  alpha = sci.fmin_slsqp(objfunc, x0, eqcons=[eqcon], bounds=bounds, iter=1000, iprint=0)
+  # alpha = sci.fmin_slsqp(objfunc, x0, eqcons=[eqcon], f_ieqcons=ineqcon)
+  w = np.apply_along_axis(lambda x: np.sum(alpha * y * x), 0, xmat)
+  iv = np.where(alpha > 0.001)[0] 
+  i  = iv[0] # first support vector where alpha is greater than zero
+  b = 1.0/y[i] - np.dot(w, xmat[i])
+  yhat = np.dot(xmat, w) + b
+  Ein = np.sum(yhat*y<0)/(1.*y.size)
+  return({'alpha':alpha, 'w':w, 'b':b, 'Ein':Ein, 'n_support':len(iv)})
+
+
+def mysvm_rbf(xmat,y,w=None, C=1e16, gamma=1.0):
+  """
+  RBF kernel needs NxN matrix of pairwise euclidean distances:
+  http://stats.stackexchange.com/questions/15798/how-to-calculate-a-gaussian-kernel-effectively-in-numpy
+  The resulting matrix is symmetric, with the diagonals being 0 in euclidean distances.
+  The rest of the quadratic programming stays the same.
+  Here includes the soft-margin constraint:
+      0 <= alpha_n <= C
+  """
+  euc = squareform(pdist(xmat,'euclidean'))**2  # gives back NxN matrix
+  xN  = np.exp(-gamma*euc)
+  yN  = np.outer(y, y)                 # because y is just a vector, you do outer product
+  Q   = yN * xN                        # itemwise mult
   objfunc = lambda x: 0.5 * np.dot(np.dot(x.transpose(), Q), x) - np.dot(np.ones(len(x)),x)
   eqcon   = lambda x: np.dot(y,x)     # equality constraint, single scalar value
   ineqcon = lambda x: np.array(x)     # inequality constraint, vector constraints
-  bounds  = [(0.0, 1e16) for i in range(xmat.shape[0])]
-  x0 = np.array([rn.uniform(0,1) for i in range(xmat.shape[0])]) # random starting point
-  # alpha = sci.fmin_slsqp(func, x0, eqcons=[eqcon], bounds=bounds)
-  alpha = sci.fmin_slsqp(objfunc, x0, eqcons=[eqcon], f_ieqcons=ineqcon)
-
+  bounds  = [(0.0, C) for i in range(xmat.shape[0])]
+  x0 = np.array([rn.uniform(0.,1.) for i in range(xmat.shape[0])]) # random starting point
+  alpha = sci.fmin_slsqp(objfunc, x0, eqcons=[eqcon], bounds=bounds, iter=1000)
   w = np.apply_along_axis(lambda x: np.sum(alpha * y * x), 0, xmat)
-  i = np.where(alpha > 0.001)[0][1] # first support vector where alpha is greater than zero
+  iv = np.where(alpha > 0.001)[0] 
+  i  = iv[0] 
   b = 1.0/y[i] - np.dot(w, xmat[i])
-  return({'alpha':alpha, 'w':w, 'b':b})
+  yhat = np.dot(xmat, w) + b
+  Ein = np.sum(yhat*y<0)/(1.*y.size)
+  return({'alpha':alpha, 'w':w, 'b':b, 'Ein':Ein, 'n_support':len(iv)})
+
+"""
+Radial Basis Functions
+======================
+NOTE:
+  * Regular RBF is classification algorithm that combines k-means clustering + linear regression
+  * Kernel RBF is the hard-margin SVM using RBF as the kernel 
+
+We experiment with the RBF model, both in regular form (Lloyd + pseudo-inverse) with K centers:
+
+  sign( sum^K_{k=1} w_k exp(-gamma ||x - uk||^2) + b)
+
+(notice that there is a bias term), and in kernel form (using the RBF kernel in hard-margin SVM):
+
+  sign( sum{an>0} an*yn exp(-gamma ||x - xn||^2) + b)
+  
+The input space is X = [-1,1] x [-1,1] with uniform probability distribution, and the target is
+  
+  f(x) = sign(x2 - x1 + 0.25 sin(pi*x1))
+
+which is slightly nonlinear in the X space. In each run, generate 100 training points at random
+using this target, and apply both forms of RBF to these training points. 
+
+Here are some guidelines:
+
+* Repeat the experiment for as many runs as needed to get the answer to be stable
+  (statistically away from flipping to the closest competing answer).
+* In case a data set is not linearly separable in the 'Z space' by the RBF kernel using hard-margin
+  SVM, discard the run but keep track of how often this happens.
+* When you use Lloyd's algorithm, initialize the centers to random points in X and iterate until
+  there is no change from iteration to iteration. If a cluster becomes empty, discard the run and 
+  repeat. 
+
+K-means Clustering
+------------------
+Some useful links for k-means Lloyd's algorithm:
+  http://www.lucifero.us/toolbox/kmeans/
+  https://gist.github.com/larsmans/4952848
+
+Core of the Lloyd's algorithm:
+
+  sum_{k=1}^{K} sum_{x in Sk} ||xn - uk||^2  w.r.t uk, Sk 
+
+  * uk <- 1/|Sk| sum_{xn in Sk} xn
+
+    compute the mean of the "center" 
+  
+  * Sk <- {xn : ||xn - uk|| <= all ||xn - ul||}
+
+    group a sample into a cluster that gives the smallest distance
+
+    for _ in xrange(n_iter):
+        # assign each sample to the cluster that gives the minimum distance
+        for i, x in enumerate(xs):
+            cluster[i] = min(xrange(k), key=lambda j: dist(xs[i], centers[j]))
+        # for each center, compute the mean by samples that are grouped within those centers
+        for j, c in enumerate(centers):
+            members = (x for i, x in enumerate(xs) if cluster[i] == j)
+            centers[j] = mean(members, l)
+
+
+13. For gamma = 1.5, how often do you get a dataset that is not linearly separable by the
+    RBF kernel (using hard-margin SVM). Hint: Run the usual hard-margin SVM, then check that
+    the solution has Ein = 0.
+
+    * hard margin always try to separate the points and sometimes does not succeed
+    * SVM of Q-order always succeed to separate N points if Q > N
+    * SVM with RBF kernel has infinite dimensions (Q = inf)
+    * Thus, Ein should be zero in all cases
+
+    [a] <=5% of the time
+
+14. If we use K=9 for regular RBF and take gamma = 1.5, how often does the kernel form beat
+    the regular form (after discarding the runs mentioned above, if any) in terms of Eout?
+  
+    * Here, you first use K-means clustering to find 9 "centers"
+    * The 9 centers become the features into the linear regression problem
+
+    >>> f.q14(200)['kerwins'] 
+    0.78
+
+    [e] >75% of the time
+
+15. If we use K=12 for regular RBF and take gamma = 1.5, how often does the kernel form beat
+    the regular form (after discarding the runs mentioned above, if any) in terms of Eout? 
+
+    >>> f.q15(200,12)
+    0.66
+
+    [d] >60% but <=90% of the time
+
+16. Now we focus on regular RBF only, with gamma=1.5. If we go from K=9 clusters to K=12 clusters,
+    which of the following 5 vases happens most often in your runs? 
+    
+    >>> e = f.q16() # ks = [9,10,11,12]
+    >>> np.mean(e['Ein'],axis=0)
+    array([ 0.0313,  0.027 ,  0.0241,  0.0223])
+    >>> np.mean(e['Eout'],axis=0)
+    array([ 0.0551,  0.0521,  0.0466,  0.0457])
+
+    [a] Ein goes down but Eout goes up
+    [b] Ein goes up but Eout goes down
+    [c] Both Ein and Eout go up
+  X [d] Both Ein and Eout go down
+    [e] There is no change
+
+17. For regular RBF with K=9, if we go from gamma=1.5 to gamma=2, which of the following 5 cases
+    happens most often in your runs? 
+
+    # this is interesting when you vary the gamma from 1.0 to 2.0 in 0.1 increments
+    >>> g = f.q17() # gammas=[1.5,1.6,1.7,1.8,1.9,2.0]
+    >>> np.mean(g['Ein'],axis=0)
+    array([ 0.03435,  0.03585,  0.0359 ,  0.03665,  0.03875,  0.03975])
+    >>> np.mean(g['Eout'],axis=0)
+    array([ 0.05555,  0.0578 ,  0.05685,  0.06125,  0.06435,  0.0693 ])
+
+    [a] Ein goes down but Eout goes up
+    [b] Ein goes up but Eout goes down
+  X [c] Both Ein and Eout go up
+    [d] Both Ein and Eout go down
+    [e] There is no change
+
+
+18. What is the percentage of time that regular RBF achieves Ein=0 with K=9 and gamma=1.5?
+
+    >>> g = f.q17(500,k=9,gammas=[1.5])
+    >>> np.sum(g['Ein'][:,0]==0.0) / (1.*g['Ein'].shape[0])
+    0.043999999999999997
+
+    [a] <=10% of the time
+"""
+
+def gendata(n=100):
+  x = np.array([[rn.uniform(-1,1),rn.uniform(-1,1)] for i in xrange(n)])
+  y = np.apply_along_axis(lambda x: np.sign(x[1]-x[0]+0.25*np.sin(np.pi*x[0])), 1, x)
+  return(x,y)
+
+def minpos(x1, mu):
+  e = np.sqrt(np.sum((x1 - mu)**2, axis=1)) # euclidean distances to all centers from single point
+  return(np.argmin(e)) # id of the center with minimum distance
+
+# Lloyd's algorithm using numpy implementation: flexible for d dimensions
+#  (x,y) = f.gendata(100)
+#  f.kmeans(x)
+def kmeans(x,k=9):
+  mu = np.array([[rn.uniform(-1,1),rn.uniform(-1,1)] for i in xrange(k)]) # random centers
+  i = 0
+  lastgroup = np.ones(x.shape[0])
+  group     = np.zeros(x.shape[0])
+  while not np.all(lastgroup==group) and i<1000:
+    lastgroup = group
+    group = np.apply_along_axis(minpos, 1, x, mu) # determine which cluster each x belongs to   
+    ug = np.unique(group).tolist()  # how many unique groups?          
+    for g in ug:
+      # xsub = x[group==g]; print("group %d has %d members" % (g, len(xsub)))
+      mu[g] = np.mean(x[group==g], axis=0) # update the centers
+    i += 1
+
+  if len(np.unique(group))!=k:
+    print("entering kmeans again because one or more clusters do not have members")
+    (x,y) = gendata(x.shape[0]) # regen
+    kmeans(x,k) # do it again if any cluster with no members found
+  return({'group':group, 'mu':mu, 'iter':i})
+
+# for verification
+# >>> (x,y)=f.gendata(100);f.showkmeans(x,f.kmeans(x)['mu'])
+def showkmeans(x,mu):
+  fig = pl.figure()
+  ax = fig.add_subplot(111)
+  ax.scatter(x[:,0],x[:,1], c='b')
+  ax.scatter(mu[:,0],mu[:,1], c='r', marker='o', s=50)
+  fig.show()
+
+def rbf1(x,mu0,gamma=1.5):
+  return( np.exp(-gamma*np.sum((x-mu0)**2)) )
+
+def rbf(x,mu,gamma=1.5):
+  z = np.empty((x.shape[0], 1+mu.shape[0]))  # N x (K+1), extra 1 for intercept
+  z[:,0] = np.ones(x.shape[0])
+  for i in xrange(mu.shape[0]):
+    z[:,i+1] = np.apply_along_axis(rbf1, 1, x, mu[i],gamma)
+  return(z)
+
+# lecture 16, slide 14/20
+def runreg_rbf(x,y,gamma=1.5,k=9):
+  r = kmeans(x,k)
+  mu = r['mu']
+  z = rbf(x,mu,gamma)
+  # create the Phi matrix
+  w = lm_ridge(z,y,lam=0.0) # standard linear regression
+  yhat = np.dot(z,w)
+  Ein = np.sum(yhat*y<0)/(1.*y.size)
+  return({'Ein':Ein, 'w':w, 'mu':mu}) 
+
+def q13(runs=1000):
+  Ein = np.empty(runs)
+  nsv = np.empty(runs)
+  for i in xrange(runs): 
+    (x,y) = gendata(100)
+    r = runsvm_rbf(x,y, C=10e6, gamma=1.5)
+    Ein[i] = r['Ein']
+    nsv[i] = r['n_support']
+  return({'num_err':np.sum(Ein != 0)/(1.*Ein.size), 'avg_nsv':np.mean(nsv)})
+
+def q14(runs=100,k=9):
+  Eout_reg = np.empty(runs)
+  Eout_ker = np.empty(runs)
+  for i in xrange(runs):
+    (x,y)       = gendata(100)
+    (xout,yout) = gendata(100)
+    # regular RBF Eout
+    r = runreg_rbf(x,y, gamma=1.5, k=k)
+    mu,w = r['mu'],r['w']
+    z    = rbf(xout,mu) # recalc the mu or use the same ones from training??
+    yhat = np.dot(z,w) 
+    Eout_reg[i] = np.sum(yhat*yout<0)/(1.*yout.size)
+    # kernel RBF Eout
+    r = runsvm_rbf(x,y, C=1e6, gamma=1.5)
+    clf,nsv = r['clf'],r['n_support']
+    yhat = clf.predict(xout)
+    Eout_ker[i] = np.sum(yhat*yout<0)/(1.*yout.size)
+  return({'Eout_reg':Eout_reg, 'Eout_ker':Eout_ker, 'kerwins':np.sum(Eout_ker<Eout_reg)/(1.*runs)})
+
+def q16(runs=100,ks=[9,10,11,12]):
+  Ein = np.empty((runs,len(ks)))
+  Eout = np.empty((runs,len(ks)))
+  for i in xrange(runs):
+    (xin,yin)   = gendata(100)
+    (xout,yout) = gendata(100)
+    for j in xrange(len(ks)):
+      k = ks[j]
+      r = runreg_rbf(xin,yin, gamma=1.5, k=k)
+      mu,w = r['mu'],r['w']
+      z    = rbf(xout,mu) # recalc the mu or use the same ones from training??
+      yhat = np.dot(z,w) 
+      Ein[i,j] = r['Ein']
+      Eout[i,j] = np.sum(yhat*yout<0)/(1.*yout.size)
+  return({'Ein':Ein,'Eout':Eout})
+
+def q17(runs=100,k=9,gammas=[1.5,1.6,1.7,1.8,1.9,2.0]):
+  Ein = np.empty((runs,len(gammas)))
+  Eout = np.empty((runs,len(gammas)))
+  for i in xrange(runs):
+    (xin,yin)   = gendata(100)
+    (xout,yout) = gendata(100)
+    for j in xrange(len(gammas)):
+      gamma = gammas[j]
+      r = runreg_rbf(xin,yin, gamma=gamma, k=k)
+      mu,w = r['mu'],r['w']
+      z    = rbf(xout,mu) # recalc the mu or use the same ones from training??
+      yhat = np.dot(z,w) 
+      Ein[i,j] = r['Ein']
+      Eout[i,j] = np.sum(yhat*yout<0)/(1.*yout.size)
+  return({'Ein':Ein,'Eout':Eout})
+
