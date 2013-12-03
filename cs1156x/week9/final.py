@@ -831,17 +831,52 @@ Aggregation
     g(x) = 1/2(g1(x) + g2(x)) for all x in X. If we use mean-squared error, which of the following
     statements is true?
 
+    Should do this on paper or try to write a simple program for it.
+    Check: Cauchy inequality. Someone mentioned it in the discussion forums.
+
+    >>> f.q20()
+    >>> np.mean(e,axis=0) # Eout avg for : g1, g2, g
+    array([ 0.0571,  0.0539,  0.0539])
+
     [a] Eout(g) cannot be worse than Eout(g1)
       : FALSE, there's no particular information about Eout(g1) over Eout(g2)
-    [b] Eout(g) cannot be worse than the smaller of Eout(g1) and Eout(g2)
-      : FALSE, intuitively, this is the average function, not the minimum... when the error for
-        g1 and g2 are different, averaging their hypothesis would yield not the minimum of the two? 
+  X [b] Eout(g) cannot be worse than the smaller of Eout(g1) and Eout(g2)
+      : TRUE, just from testing, g always seems to be better than smaller of g1 or g2
     [c] Eout(g) cannot be worse than the average of Eout(g1) and Eout(g2)
-      : FALSE, if g1 and g2 are orthogonal, it _could_ create combined hypothesis that can be worse
-        than the average error of the two?
-  X [d] Eout(g) has to be between Eout(g1) and Eout(g2) (including the end values of that interval)
-      : it's reasonable to think that the error falls between the values. If g1==g2, then Eout(g) 
-        should be exactly Eout(g1) or Eout(g2). If g1!=g2, the resulting error should be between 
-        the better and the worse Eout of the two.
+    [d] Eout(g) has to be between Eout(g1) and Eout(g2) (including the end values of that interval)
     [e] None of the above
 """
+
+def runreg1(x,y):
+  w = lm_ridge(x,y,lam=0.0) # standard linear regression
+  yhat = np.dot(x,w)
+  Ein = np.sum(yhat*y<0)/(1.*y.size)
+  return({'Ein':Ein, 'w':w}) 
+
+def addintercept(x):
+  return(np.apply_along_axis(lambda x: np.append(1.,x), 1,x))
+
+# g1 = linear regression
+# g2 = svm
+def q20(runs=100):
+  n = 100
+  Ein  = np.empty((runs,3))   
+  Eout = np.empty((runs,3))   
+  for i in xrange(runs):
+    (xin,yin)   = gendata(100)
+    (xout,yout) = gendata(100)
+    r1 = runreg(addintercept(xin),yin) # standard linear regression
+    r2 = runsvm_lin(xin,yin) # svm
+    Ein[i,0:2] = np.array([r1['Ein'],r2['Ein']]) 
+    w1 = r1['w']
+    w2 = np.append(r2['b'],r2['w'])
+    print(w1,w2)
+    yhat = np.dot(addintercept(xout),r1['w'])
+    Eout[i,0] = np.sum(yhat*yout<0)/(1.*yout.size)
+    yhat = r2['clf'].predict(xout)
+    Eout[i,1] = np.sum(yhat*yout<0)/(1.*yout.size)
+    # g = 0.5 ( g1 + g2 )
+    w = 0.5*(r1['w'] + np.append(r2['b'],r2['w']))
+    yhat = np.dot(addintercept(xout),w)
+    Eout[i,2] = np.sum(yhat*yout<0)/(1.*yout.size)
+  return(Eout)
