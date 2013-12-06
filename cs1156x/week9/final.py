@@ -64,14 +64,18 @@ Bias and Variance
     [a] A singleton H (H has one hypothesis) - then all training will always give 1 result
     [b] H is the set of constant, real-values hypothesis - h(x) = b all real numberse
     [c] H is the linear regression model - what does lm has to do with this?
-    [d] H is the logistic regression model - em.. same as [c]?
-  X [e] none of the above?
+  X [d] H is the logistic regression model - em.. same as [c]?
+      : ah... the sigmoid function can't be added so..
+    [e] none of the above?
 """
 
 """
 Overfitting
 ===========
 3. Which of the following statements is false? (here, FALSE!)
+  
+    overfitting definition:
+      Ein(h1) < Ein(h2) AND Eout(h1) > Eout(h2)
 
     [a] If there is overfitting, there must be two or more hypotheses that have diff
         values of Ein
@@ -84,10 +88,12 @@ Overfitting
     [c] If there is overfitting, there must be two or more hypotheses that have diff 
         values of (Eout - Ein)
         : this is the definition of the Omega function that expresses the diff of err terms
-    [d] We can always determine if there is overfitting by comparing the values of
+  X [d] We can always determine if there is overfitting by comparing the values of
         (Eout - Ein)
-        : Eout <= Ein + Omega(N,d), so yes
-  X [e] We cannot determine overfitting based on one hypothesis only
+        : what if you had    Ein(h1,h2) = (0,2),  Eout(h1,h2) = (1,1) ??
+                             Eout - Ein = (1,-1)   the second num is not overfitting?
+    
+    [e] We cannot determine overfitting based on one hypothesis only
         : yes we can
 
 4. Which of the following statments is true? (here, TRUE!)
@@ -142,7 +148,7 @@ Regularization
 6. Soft-order constraints that regularize polynomial models can be
 
     [a] written as hard-order constraints
-      : 
+      : hard-order constraints do not have upper bound:  0 < alpha < infinity
   X [b] translated into augmented error
       : using constraints, you regularize the hypothesis which lends to Eaug (augmented error)
     [c] determined from the value of the VC dimension
@@ -817,11 +823,14 @@ Bayesian Priors
       P(h=f)   is unif[0,1]
       P(D|h=f) given D, we can compute this qty? is this Ein? (lecture 18, slide 8)   
 
+    NOTE: read the discussion forum on this:
+    https://courses.edx.org/courses/CaltechX/CS1156x/Fall2013/discussion/forum/i4x-Caltech-CS156-course-Fall2013_Week9/threads/5293b0cd45d9975fff0000e3 
+
     [a] The posterior is uniform over [0,1]
-    [b] The posterior increases linearly over [0,1]
+  X [b] The posterior increases linearly over [0,1]
     [c] The posterior increases nonlinearly over [0,1]
     [d] The posterior is a delta function at 1 (implying f has to be 1)
-  X [e] The posterior cannot be evaluated based on the given information
+    [e] The posterior cannot be evaluated based on the given information
 
 
 Aggregation
@@ -838,11 +847,15 @@ Aggregation
     >>> np.mean(e,axis=0) # Eout avg for : g1, g2, g
     array([ 0.0571,  0.0539,  0.0539])
 
+    NOTE: look at the proof on the image of my notes. But can't believe I got this one wrong!
+
     [a] Eout(g) cannot be worse than Eout(g1)
       : FALSE, there's no particular information about Eout(g1) over Eout(g2)
-  X [b] Eout(g) cannot be worse than the smaller of Eout(g1) and Eout(g2)
-      : TRUE, just from testing, g always seems to be better than smaller of g1 or g2
-    [c] Eout(g) cannot be worse than the average of Eout(g1) and Eout(g2)
+    [b] Eout(g) cannot be worse than the smaller of Eout(g1) and Eout(g2)
+      : FALSE, despite from testing, g always seems to be better than smaller of g1 or g2
+  X [c] Eout(g) cannot be worse than the average of Eout(g1) and Eout(g2)
+      : worked this out on paper. The result gives:
+          E[g] = 0.5 ( E[g1] + E[g2] - 0.5 E[g1-g2] )
     [d] Eout(g) has to be between Eout(g1) and Eout(g2) (including the end values of that interval)
     [e] None of the above
 """
