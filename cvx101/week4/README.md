@@ -50,10 +50,11 @@ Homework
 [CVX Setup] (http://cvxr.com/cvx/download/)
 -----------
 
-
-   wget http://cvxr.com/cvx/cvx-a64.tar.gz
-   tar -zxvf cvx-a64.tar.gz
-   
-   # in matlab
-   addpath(genpath('/path/to/cvx'))
-   cvx_setup
+  ```
+  wget http://cvxr.com/cvx/cvx-a64.tar.gz
+  tar -zxvf cvx-a64.tar.gz
+  
+  # in matlab
+  addpath(genpath('/path/to/cvx'))
+  cvx_setup
+  ```
